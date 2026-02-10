@@ -4,8 +4,8 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     id("com.android.application")
     kotlin("android")
-    // O PLUGIN QUE ESTAVA FALTANDO PARA O KOTLIN 2.0
-    id("org.jetbrains.kotlin.plugin.compose") version "2.0.0" 
+    // Deixamos sem a versão para o Gradle usar a 2.3.0 que ele já encontrou
+    id("org.jetbrains.kotlin.plugin.compose") 
 }
 
 val APP_VERSION_NAME : String by project
@@ -28,8 +28,6 @@ android {
     buildFeatures {
         compose = true
     }
-
-    // Com o plugin novo, não precisamos mais da linha 'kotlinCompilerExtensionVersion' aqui dentro!
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -58,7 +56,7 @@ dependencies {
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
     implementation("androidx.activity:activity-compose:1.8.2")
-    implementation(platform("androidx.compose:compose-bom:2024.01.00")) // Versão atualizada
+    implementation(platform("androidx.compose:compose-bom:2024.01.00"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")

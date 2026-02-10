@@ -53,6 +53,7 @@ val MonstroLibrary = listOf(
     MonstroPreset("trap", "TRAP LORD", "Estilo Trap"),
     MonstroPreset("dark", "DARK ENERGY", "Cinema")
 )
+
 data class MonstroClip(val uri: Uri, val presetAtivo: MonstroPreset = MonstroLibrary[0])
 data class MonstroProject(val clips: List<MonstroClip> = emptyList())
 
@@ -60,17 +61,11 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            MonstroTheme { MonstroIndustrialEditor() }
+            MaterialTheme(colorScheme = darkColorScheme(primary = MonstroAccent, background = MonstroBg, surface = DarkGrey)) {
+                MonstroIndustrialEditor()
+            }
         }
     }
-}
-
-@Composable
-fun MonstroTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = darkColorScheme(primary = MonstroAccent, background = MonstroBg, surface = DarkGrey),
-        content = content
-    )
 }
 
 @Composable
@@ -90,15 +85,9 @@ fun MonstroIndustrialEditor() {
         uri?.let {
             projeto = projeto.copy(clips = projeto.clips + MonstroClip(uri = it))
             if (exoPlayer == null) {
-                exoPlayer = ExoPlayer.Builder(context).build().apply {
-                    repeatMode = Player.REPEAT_MODE_ONE
-                }
+                exoPlayer = ExoPlayer.Builder(context).build().apply { repeatMode = Player.REPEAT_MODE_ONE }
             }
-            exoPlayer?.apply {
-                addMediaItem(MediaItem.fromUri(it))
-                prepare()
-                playWhenReady = true
-            }
+            exoPlayer?.apply { addMediaItem(MediaItem.fromUri(it)); prepare(); playWhenReady = true }
         }
     }
 
@@ -113,8 +102,8 @@ fun MonstroIndustrialEditor() {
             Text("MONSTRO V18", color = Color.White, fontWeight = FontWeight.Black, fontSize = 22.sp)
             Spacer(Modifier.height(20.dp))
 
-            // PREVIEW COM ASPECT RATIO CORRIGIDO
-            Box(modifier = Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(16.dp)).background(DarkGrey)) {
+            // ÁREA DE PREVIEW
+            Box(modifier = Modifier.fillMaxWidth().height(220.dp).clip(RoundedCornerShape(16.dp)).background(DarkGrey)) {
                 if (projeto.clips.isEmpty()) {
                     Box(Modifier.fillMaxSize().clickable { launchPermissao.launch(permissao) }, contentAlignment = Alignment.Center) {
                         Icon(Icons.Default.Add, contentDescription = null, tint = Color.Gray)
@@ -123,9 +112,6 @@ fun MonstroIndustrialEditor() {
                     exoPlayer?.let { player ->
                         AndroidView(factory = { PlayerView(it).apply { this.player = player; useController = false } }, modifier = Modifier.fillMaxSize())
                     }
-                }
-                if (estaExportando) {
-                    LinearProgressIndicator(progress = progressoExport, modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter), color = MonstroAccent)
                 }
             }
 
@@ -144,7 +130,9 @@ fun MonstroIndustrialEditor() {
                     estaExportando = false
                     Toast.makeText(context, "RENDERIZADO!", Toast.LENGTH_SHORT).show()
                 }
-            }, modifier = Modifier.fillMaxWidth()) { Text("RENDERIZAR VÍDEO") }
+            }, modifier = Modifier.fillMaxWidth()) { 
+                Text(if (estaExportando) "RENDERIZANDO..." else "RENDERIZAR VÍDEO") 
+            }
         }
     }
 }

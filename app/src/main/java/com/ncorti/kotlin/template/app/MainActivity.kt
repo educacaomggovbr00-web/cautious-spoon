@@ -16,27 +16,15 @@ import androidx.compose.ui.unit.sp
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // O segredo está em NÃO usar nada que venha do XML aqui
         setContent {
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color(0xFF020306)), // Fundo preto Monstro
+                modifier = Modifier.fillMaxSize().background(Color(0xFF020306)),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "MONSTRO V18",
-                        color = Color(0xFFa855f7),
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Black
-                    )
+                    Text("MONSTRO V18", color = Color(0xFFa855f7), fontSize = 32.sp, fontWeight = FontWeight.Black)
                     Spacer(modifier = Modifier.height(10.dp))
-                    Text(
-                        text = "SISTEMA ESTÁVEL",
-                        color = Color.White,
-                        fontSize = 16.sp
-                    )
+                    Text("SISTEMA ATIVO", color = Color.White, fontSize = 16.sp)
                     Spacer(modifier = Modifier.height(30.dp))
                     CircularProgressIndicator(color = Color(0xFFdb2777))
                 }

@@ -4,7 +4,6 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     id("com.android.application")
     kotlin("android")
-    // Deixamos sem a versão para o Gradle usar a 2.3.0 que ele já encontrou
     id("org.jetbrains.kotlin.plugin.compose") 
 }
 
@@ -16,9 +15,8 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        minSdk = 24
+        minSdk = 24 
         namespace = APP_ID
-
         applicationId = APP_ID
         versionCode = APP_VERSION_CODE.toInt()
         versionName = APP_VERSION_NAME
@@ -54,6 +52,7 @@ tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
 
 dependencies {
     implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.appcompat:appcompat:1.6.1") // RESOLVE O ERRO DE RESOURCE
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
     implementation("androidx.activity:activity-compose:1.8.2")
     implementation(platform("androidx.compose:compose-bom:2024.01.00"))

@@ -9,15 +9,16 @@ plugins {
 
 val APP_VERSION_NAME : String by project
 val APP_VERSION_CODE : String by project
-val APP_ID : String by project
 
 android {
     compileSdk = 34
 
+    // ENDEREÇO FIXO PARA CURAR O CRASH
+    namespace = "com.ncorti.kotlin.template.app"
+
     defaultConfig {
         minSdk = 24 
-        namespace = APP_ID
-        applicationId = APP_ID
+        applicationId = "com.ncorti.kotlin.template.app"
         versionCode = APP_VERSION_CODE.toInt()
         versionName = APP_VERSION_NAME
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -52,7 +53,7 @@ tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
 
 dependencies {
     implementation("androidx.core:core-ktx:1.12.0")
-    implementation("androidx.appcompat:appcompat:1.6.1") // RESOLVE O ERRO DE RESOURCE
+    implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
     implementation("androidx.activity:activity-compose:1.8.2")
     implementation(platform("androidx.compose:compose-bom:2024.01.00"))

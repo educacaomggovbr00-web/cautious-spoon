@@ -18,7 +18,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            // Fundo escuro para combinar com o Estilo Monstro
+            // Fundo escuro oficial do Monstro V18
             Surface(modifier = Modifier.fillMaxSize(), color = Color(0xFF020306)) {
                 MonstroLanding()
             }

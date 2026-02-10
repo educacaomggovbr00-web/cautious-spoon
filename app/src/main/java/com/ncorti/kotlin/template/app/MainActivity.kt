@@ -3,7 +3,6 @@ package com.ncorti.kotlin.template.app
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -47,6 +46,7 @@ fun MonstroLanding() {
             fontWeight = FontWeight.Bold
         )
         Spacer(modifier = Modifier.height(32.dp))
+        // Um carregamento visual para mostrar que o app está rodando
         CircularProgressIndicator(color = Color(0xFFdb2777))
     }
 }

@@ -9,13 +9,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -25,7 +21,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -39,100 +34,79 @@ import androidx.media3.ui.PlayerView
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-// --- CONFIGURAÇÃO VISUAL ---
-val MonstroBg = Color(0xFF020306)
-val MonstroAccent = Color(0xFFa855f7)
-val MonstroPink = Color(0xFFdb2777)
-val EmeraldTurbo = Color(0xFF10b981)
-val DarkGrey = Color(0xFF121214)
-
-data class MonstroPreset(val id: String, val nome: String, val descricao: String)
-val MonstroLibrary = listOf(
-    MonstroPreset("raw", "ESTADO RAW", "Sem filtros"),
-    MonstroPreset("neon", "NEON PUNCH", "Brilho"),
-    MonstroPreset("trap", "TRAP LORD", "Estilo Trap"),
-    MonstroPreset("dark", "DARK ENERGY", "Cinema")
-)
-
-data class MonstroClip(val uri: Uri, val presetAtivo: MonstroPreset = MonstroLibrary[0])
-data class MonstroProject(val clips: List<MonstroClip> = emptyList())
-
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            MaterialTheme(colorScheme = darkColorScheme(primary = MonstroAccent, background = MonstroBg, surface = DarkGrey)) {
-                MonstroIndustrialEditor()
+            MaterialTheme(colorScheme = darkColorScheme(primary = Color(0xFFa855f7))) {
+                MonstroEditorScreen()
             }
         }
     }
 }
 
 @Composable
-fun MonstroIndustrialEditor() {
+fun MonstroEditorScreen() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var projeto by remember { mutableStateOf(MonstroProject()) }
-    var indiceSelecionado by remember { mutableStateOf(0) }
-    var estaExportando by remember { mutableStateOf(false) }
-    var progressoExport by remember { mutableStateOf(0f) }
-    var exoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }
+    var clips by remember { mutableStateOf(listOf<Uri>()) }
+    var exportando by remember { mutableStateOf(false) }
+    var progresso by remember { mutableStateOf(0f) }
+    
+    val exoPlayer = remember {
+        ExoPlayer.Builder(context).build().apply { repeatMode = Player.REPEAT_MODE_ONE }
+    }
+
+    val seletor = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let { 
+            clips = clips + it
+            exoPlayer.addMediaItem(MediaItem.fromUri(it))
+            exoPlayer.prepare()
+        }
+    }
 
     val permissao = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) 
         Manifest.permission.READ_MEDIA_VIDEO else Manifest.permission.READ_EXTERNAL_STORAGE
 
-    val seletorVideo = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        uri?.let {
-            projeto = projeto.copy(clips = projeto.clips + MonstroClip(uri = it))
-            if (exoPlayer == null) {
-                exoPlayer = ExoPlayer.Builder(context).build().apply { repeatMode = Player.REPEAT_MODE_ONE }
+    val launchPermissao = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        if (it) seletor.launch("video/*")
+    }
+
+    Column(Modifier.fillMaxSize().background(Color(0xFF020306)).padding(16.dp)) {
+        Text("MONSTRO V18", color = Color.White, fontWeight = FontWeight.Black, fontSize = 24.sp)
+        Spacer(Modifier.height(20.dp))
+
+        Box(Modifier.fillMaxWidth().height(220.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFF121214))) {
+            if (clips.isEmpty()) {
+                IconButton(onClick = { launchPermissao.launch(permissao) }, Modifier.fillMaxSize()) {
+                    Icon(Icons.Default.Add, null, tint = Color.Gray, modifier = Modifier.size(40.dp))
+                }
+            } else {
+                AndroidView(factory = { PlayerView(it).apply { player = exoPlayer; useController = false } }, Modifier.fillMaxSize())
             }
-            exoPlayer?.apply { addMediaItem(MediaItem.fromUri(it)); prepare(); playWhenReady = true }
         }
-    }
 
-    val launchPermissao = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-        if (isGranted) seletorVideo.launch("video/*")
-    }
-
-    DisposableEffect(Unit) { onDispose { exoPlayer?.release() } }
-
-    Scaffold(containerColor = MonstroBg) { padding ->
-        Column(modifier = Modifier.padding(padding).fillMaxSize().padding(16.dp)) {
-            Text("MONSTRO V18", color = Color.White, fontWeight = FontWeight.Black, fontSize = 22.sp)
-            Spacer(Modifier.height(20.dp))
-
-            // ÁREA DE PREVIEW
-            Box(modifier = Modifier.fillMaxWidth().height(220.dp).clip(RoundedCornerShape(16.dp)).background(DarkGrey)) {
-                if (projeto.clips.isEmpty()) {
-                    Box(Modifier.fillMaxSize().clickable { launchPermissao.launch(permissao) }, contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.Add, contentDescription = null, tint = Color.Gray)
-                    }
-                } else {
-                    exoPlayer?.let { player ->
-                        AndroidView(factory = { PlayerView(it).apply { this.player = player; useController = false } }, modifier = Modifier.fillMaxSize())
-                    }
-                }
+        Spacer(Modifier.height(20.dp))
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            itemsIndexed(clips) { index, _ ->
+                Box(Modifier.size(80.dp, 50.dp).background(Color(0xFFa855f7)).clickable { exoPlayer.seekToDefaultPosition(index) })
             }
+        }
 
-            Spacer(Modifier.height(20.dp))
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                itemsIndexed(projeto.clips) { index, _ ->
-                    Box(Modifier.size(100.dp, 60.dp).background(if(index == indiceSelecionado) MonstroAccent else DarkGrey).clickable { indiceSelecionado = index })
-                }
-            }
-            
-            Spacer(Modifier.weight(1f))
-            Button(onClick = {
-                estaExportando = true
+        Spacer(Modifier.weight(1f))
+        if (exportando) LinearProgressIndicator(progress = progresso, modifier = Modifier.fillMaxWidth())
+
+        Button(
+            onClick = {
+                exportando = true
                 scope.launch {
-                    while(progressoExport < 1f) { delay(50); progressoExport += 0.05f }
-                    estaExportando = false
-                    Toast.makeText(context, "RENDERIZADO!", Toast.LENGTH_SHORT).show()
+                    while(progresso < 1f) { delay(50); progresso += 0.02f }
+                    exportando = false
+                    Toast.makeText(context, "VÍDEO EXPORTADO!", Toast.LENGTH_SHORT).show()
                 }
-            }, modifier = Modifier.fillMaxWidth()) { 
-                Text(if (estaExportando) "RENDERIZANDO..." else "RENDERIZAR VÍDEO") 
-            }
-        }
+            },
+            Modifier.fillMaxWidth(),
+            enabled = clips.isNotEmpty() && !exportando
+        ) { Text("RENDERIZAR") }
     }
 }

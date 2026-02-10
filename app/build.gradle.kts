@@ -11,10 +11,10 @@ val APP_VERSION_CODE : String by project
 val APP_ID : String by project
 
 android {
-    compileSdk = 34 // Versão atualizada para 2026
+    compileSdk = 34
 
     defaultConfig {
-        minSdk = 24 // Roda tranquilo no seu Samsung A30s
+        minSdk = 24
         namespace = APP_ID
 
         applicationId = APP_ID
@@ -23,13 +23,12 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    // ATIVA O COMPOSE PARA O SEU EDITOR FUNCIONAR
     buildFeatures {
         compose = true
     }
 
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.1" 
+        kotlinCompilerExtensionVersion = "1.5.1"
     }
 
     compileOptions {
@@ -43,11 +42,6 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
-
-    lint {
-        warningsAsErrors = false
-        abortOnError = false
-    }
 }
 
 tasks.withType<KotlinCompile>().configureEach {
@@ -56,24 +50,24 @@ tasks.withType<KotlinCompile>().configureEach {
     }
 }
 
-// IGNORA O FISCAL CHATO (DETEKT)
+// Isso aqui mata o fiscal chato (Detekt)
 tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
     ignoreFailures = true
 }
 
 dependencies {
-    // BIBLIOTECAS DO MONSTRO (COMPOSE E VÍDEO)
-    implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.ui)
-    implementation(libs.androidx.ui.graphics)
-    implementation(libs.androidx.ui.tooling.preview)
-    implementation(libs.androidx.material3)
-    implementation(libs.androidx.activity.compose)
+    // IMPORTAÇÕES DIRETAS (Sem usar o libs. do catálogo que deu erro)
+    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
+    implementation("androidx.activity:activity-compose:1.8.2")
+    implementation(platform("androidx.compose:compose-bom:2023.10.01"))
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.ui:ui-graphics")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("androidx.compose.material3:material3")
     
-    // MEDIA3 PARA O PLAYER DE VÍDEO
+    // PLAYER DE VÍDEO DO MONSTRO
     implementation("androidx.media3:media3-exoplayer:1.2.0")
     implementation("androidx.media3:media3-ui:1.2.0")
     implementation("androidx.media3:media3-common:1.2.0")
-
-    implementation(libs.androidx.core.ktx)
 }

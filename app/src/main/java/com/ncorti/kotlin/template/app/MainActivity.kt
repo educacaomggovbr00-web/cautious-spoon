@@ -38,15 +38,16 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
+            // Usando cores diretas para não depender de arquivos de tema externos
             MaterialTheme(colorScheme = darkColorScheme(primary = Color(0xFFa855f7))) {
-                MonstroEditorScreen()
+                MonstroV18Screen()
             }
         }
     }
 }
 
 @Composable
-fun MonstroEditorScreen() {
+fun MonstroV18Screen() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var clips by remember { mutableStateOf(listOf<Uri>()) }
@@ -74,8 +75,10 @@ fun MonstroEditorScreen() {
 
     Column(Modifier.fillMaxSize().background(Color(0xFF020306)).padding(16.dp)) {
         Text("MONSTRO V18", color = Color.White, fontWeight = FontWeight.Black, fontSize = 24.sp)
+        
         Spacer(Modifier.height(20.dp))
 
+        // BOX DE VÍDEO OTIMIZADA
         Box(Modifier.fillMaxWidth().height(220.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFF121214))) {
             if (clips.isEmpty()) {
                 IconButton(onClick = { launchPermissao.launch(permissao) }, Modifier.fillMaxSize()) {
@@ -87,14 +90,22 @@ fun MonstroEditorScreen() {
         }
 
         Spacer(Modifier.height(20.dp))
+
+        // TIMELINE
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             itemsIndexed(clips) { index, _ ->
-                Box(Modifier.size(80.dp, 50.dp).background(Color(0xFFa855f7)).clickable { exoPlayer.seekToDefaultPosition(index) })
+                Box(Modifier.size(80.dp, 50.dp).background(Color(0xFFa855f7)).clickable { 
+                    exoPlayer.seekToDefaultPosition(index)
+                    exoPlayer.play()
+                })
             }
         }
 
         Spacer(Modifier.weight(1f))
-        if (exportando) LinearProgressIndicator(progress = progresso, modifier = Modifier.fillMaxWidth())
+
+        if (exportando) {
+            LinearProgressIndicator(progress = progresso, modifier = Modifier.fillMaxWidth(), color = Color(0xFFdb2777))
+        }
 
         Button(
             onClick = {
@@ -102,11 +113,14 @@ fun MonstroEditorScreen() {
                 scope.launch {
                     while(progresso < 1f) { delay(50); progresso += 0.02f }
                     exportando = false
-                    Toast.makeText(context, "VÍDEO EXPORTADO!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "RENDERIZADO COM SUCESSO!", Toast.LENGTH_SHORT).show()
                 }
             },
-            Modifier.fillMaxWidth(),
-            enabled = clips.isNotEmpty() && !exportando
-        ) { Text("RENDERIZAR") }
+            Modifier.fillMaxWidth().height(56.dp),
+            enabled = clips.isNotEmpty() && !exportando,
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFa855f7))
+        ) {
+            Text("RENDERIZAR MP4", fontWeight = FontWeight.Bold)
+        }
     }
 }

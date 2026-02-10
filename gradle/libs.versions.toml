@@ -14,9 +14,12 @@ target-sdk-version = "36"
 media3 = "1.5.1"
 
 [libraries]
-# Referências que o buildSrc estava gritando (Conserta o erro do log)
+# Referências vitais para o buildSrc
 agp = { module = "com.android.tools.build:gradle", version.ref = "agp" }
 kgp = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
+
+# A LINHA QUE FALTAVA (Resolve o erro da linha 20)
+detekt-formatting = { module = "io.gitlab.arturbosch.detekt:detekt-formatting", version.ref = "detekt" }
 
 # Bibliotecas do Android e Compose
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity-compose" }
@@ -39,4 +42,4 @@ android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
-nexus-publish = { id = "io.github.gradle-nexus.publish-plugin", version.ref = "nexus-publish" }
+nexus-publish = { id = "io.github.gradle-nexus.publish-plugin", version.ref = "nexus_publish" }

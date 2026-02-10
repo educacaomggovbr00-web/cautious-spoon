@@ -17,14 +17,14 @@
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@android:style/Theme.Material.NoActionBar"
+        android:theme="@android:style/Theme.DeviceDefault.NoActionBar"
         tools:replace="android:label,android:theme"
         tools:ignore="AllowBackup">
 
         <activity 
-            android:name=".MainActivity"
+            android:name="com.ncorti.kotlin.template.app.MainActivity"
             android:exported="true"
-            android:configChanges="orientation|screenSize">
+            android:configChanges="orientation|screenSize|keyboardHidden">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

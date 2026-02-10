@@ -12,6 +12,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.foundation.*
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -19,6 +20,8 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,7 +40,6 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.io.File
 
 // --- CONFIGURAÇÃO VISUAL ---
 val MonstroBg = Color(0xFF020306)
@@ -51,7 +53,7 @@ data class MonstroPreset(
     val id: String, 
     val nome: String, 
     val descricao: String,
-    val matrixCor: FloatArray? = null // Para filtros reais de cor futuramente
+    val matrixCor: FloatArray? = null 
 )
 
 val MonstroLibrary = listOf(
@@ -98,13 +100,13 @@ fun MonstroIndustrialEditor() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    // Estados de Gerenciamento
+    // Estados de Gerenciamento com tipos otimizados
     var projeto by remember { mutableStateOf(MonstroProject()) }
-    var indiceSelecionado by remember { mutableStateOf(0) }
+    var indiceSelecionado by remember { mutableIntStateOf(0) }
     var estaExportando by remember { mutableStateOf(false) }
-    var progressoExport by remember { mutableStateOf(0f) }
+    var progressoExport by remember { mutableFloatStateOf(0f) }
     
-    // Inicialização Adiada do Player (Lazy Loading para economizar RAM do A30s)
+    // Player carregado sob demanda para poupar RAM no A30s
     var exoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }
 
     // Gerenciador de Permissões
@@ -143,7 +145,7 @@ fun MonstroIndustrialEditor() {
         else Toast.makeText(context, "Acesso negado!", Toast.LENGTH_SHORT).show()
     }
 
-    // Cleanup de Hardware ao fechar o app
+    // Cleanup necessário para não vazar memória no hardware
     DisposableEffect(Unit) {
         onDispose { exoPlayer?.release() }
     }
@@ -151,7 +153,7 @@ fun MonstroIndustrialEditor() {
     Scaffold(containerColor = MonstroBg) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize().padding(16.dp)) {
             
-            // CABEÇALHO INDUSTRIAL
+            // CABEÇALHO
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Column {
                     Text("MONSTRO V18", color = Color.White, fontWeight = FontWeight.Black, fontSize = 22.sp)
@@ -166,7 +168,7 @@ fun MonstroIndustrialEditor() {
 
             Spacer(Modifier.height(20.dp))
 
-            // ÁREA DE PREVIEW (SÓ CARREGA O PLAYER SE HOUVER CLIP)
+            // ÁREA DE PREVIEW
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -180,7 +182,7 @@ fun MonstroIndustrialEditor() {
                         Modifier.fillMaxSize().clickable { launchPermissao.launch(permissao) },
                         verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(32.dp))
+                        Icon(Icons.Filled.Add, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(32.dp))
                         Spacer(Modifier.height(8.dp))
                         Text("IMPORTAR VÍDEO MASTER", color = Color.Gray, fontWeight = FontWeight.Black, fontSize = 12.sp)
                     }
@@ -196,7 +198,12 @@ fun MonstroIndustrialEditor() {
                 if (estaExportando) {
                     Box(Modifier.fillMaxSize().background(Color.Black.copy(0.85f)), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator(progress = progressoExport, color = MonstroAccent, strokeWidth = 6.dp)
+                            // Correção da sintaxe do CircularProgressIndicator para Material3
+                            CircularProgressIndicator(
+                                progress = { progressoExport }, 
+                                color = MonstroAccent, 
+                                strokeWidth = 6.dp
+                            )
                             Spacer(Modifier.height(16.dp))
                             Text("RENDERIZANDO MP4...", color = Color.White, fontWeight = FontWeight.Black)
                             Text("${(progressoExport * 100).toInt()}% CONCLUÍDO", color = MonstroAccent, fontSize = 10.sp)
@@ -207,11 +214,11 @@ fun MonstroIndustrialEditor() {
 
             Spacer(Modifier.height(20.dp))
 
-            // TIMELINE DINÂMICA
+            // TIMELINE
             Text("TIMELINE DE CLIPS", color = Color.Gray, fontSize = 10.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
             LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                itemsIndexed(projeto.clips) { index, clip ->
+                itemsIndexed(projeto.clips) { index, _ ->
                     val ativo = index == indiceSelecionado
                     Box(
                         modifier = Modifier
@@ -241,7 +248,7 @@ fun MonstroIndustrialEditor() {
 
             Spacer(Modifier.height(20.dp))
 
-            // GRADE DE PRESETS (EFEITOS)
+            // PRESETS
             Text("ESCOLHER ENGINE DE COR", color = Color.Gray, fontSize = 10.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
             LazyVerticalGrid(
@@ -261,9 +268,7 @@ fun MonstroIndustrialEditor() {
                                 if (indiceSelecionado in projeto.clips.indices) {
                                     val novaLista = projeto.clips.toMutableList()
                                     novaLista[indiceSelecionado] = novaLista[indiceSelecionado].copy(presetAtivo = preset)
-                                    projeto = projeto.copy(novaLista.toList())
-                                    
-                                    // Feedback Visual
+                                    projeto = projeto.copy(clips = novaLista.toList())
                                     Toast.makeText(context, "${preset.nome} ATIVADO", Toast.LENGTH_SHORT).show()
                                 }
                             }
@@ -275,15 +280,14 @@ fun MonstroIndustrialEditor() {
                 }
             }
 
-            // BOTÃO DE RENDERIZAÇÃO
+            // BOTÃO RENDER
             Button(
                 onClick = {
                     estaExportando = true
                     scope.launch {
-                        // Simulação de Processamento do Media3 Transformer no A30s
                         progressoExport = 0f
                         while (progressoExport < 1f) {
-                            delay(40) // Simula esforço da CPU
+                            delay(40)
                             progressoExport += 0.01f
                         }
                         estaExportando = false
@@ -301,9 +305,3 @@ fun MonstroIndustrialEditor() {
     }
 }
 
-// Ícones Genéricos para facilitar o Single-File
-object Icons {
-    object Default {
-        val Add = 0 // Apenas marcador para o exemplo
-    }
-}

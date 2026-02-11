@@ -1,4 +1,4 @@
-name: Monstro V18 - Debug Total
+name: Monstro V18 - Limpeza e Build
 
 on:
   push:
@@ -10,7 +10,7 @@ on:
 
 jobs:
   gradle:
-    name: Depuração de APK do compilador
+    name: Gerar APK Sem Sujeira
     runs-on: ubuntu-latest
     if: ${{ !contains(github.event.head_commit.message, 'ci skip') }}
     
@@ -24,16 +24,18 @@ jobs:
           distribution: "zulu"
           java-version: "17"
 
-      - name: Setup Gradle
+      - name: Setup Gradle (Reset de Cache)
         uses: gradle/actions/setup-gradle@v4
+        with:
+          # Desativa o cache para limpar qualquer erro das versões anteriores
+          cache-disabled: true
+          cache-cleanup: always
 
-      - name: Compilar com Log de Erros
-        # --stacktrace: Mostra onde o erro nasceu
-        # --info: Dá detalhes de cada tarefa
-        # --continue: Tenta achar o próximo erro mesmo após falhar o primeiro
-        run: ./gradlew assembleDebug --stacktrace --info --continue
+      - name: Compilar APK Monstro
+        # Foco total no comando que gera o arquivo para o seu A30s
+        run: ./gradlew assembleDebug --stacktrace
 
-      - name: Faça upload do APK para Monstro
+      - name: Upload APK Final
         uses: actions/upload-artifact@v4
         with:
           name: Monstro-V18-APK

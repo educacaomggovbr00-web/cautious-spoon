@@ -1,4 +1,4 @@
-name: Monstro V18 - Limpeza e Build
+name: Monstro V18 - Build Limpo
 
 on:
   push:
@@ -24,18 +24,20 @@ jobs:
           distribution: "zulu"
           java-version: "17"
 
-      - name: Setup Gradle (Reset de Cache)
+      - name: Setup Gradle (Reset Total)
         uses: gradle/actions/setup-gradle@v4
         with:
-          # Desativa o cache para limpar qualquer erro das versões anteriores
+          # Como você limpou o cache manualmente, desativamos aqui para garantir 
+          # que o robô não tente criar um cache corrompido de novo agora.
           cache-disabled: true
           cache-cleanup: always
 
       - name: Compilar APK Monstro
-        # Foco total no comando que gera o arquivo para o seu A30s
+        # O stacktrace vai nos mostrar a linha exata do erro se o Kotlin falhar
         run: ./gradlew assembleDebug --stacktrace
 
       - name: Upload APK Final
+        # Assim que o círculo ficar verde, o APK aparece aqui para download
         uses: actions/upload-artifact@v4
         with:
           name: Monstro-V18-APK

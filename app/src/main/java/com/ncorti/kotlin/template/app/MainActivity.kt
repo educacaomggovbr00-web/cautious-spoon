@@ -50,15 +50,15 @@ data class MonstroPreset(val id: String, val nome: String, val desc: String)
 data class MonstroClip(val uri: Uri, val preset: String = "none")
 
 val ChaosEffects = listOf(
-    MonstroVfx("motionblur", "Motion Blur"), MonstroVfx("smartzoom", "Auto Retention"),
-    MonstroVfx("glitch", "Digital Glitch"), MonstroVfx("rgb", "RGB Split"),
-    MonstroVfx("shake", "Impact Shake"), MonstroVfx("strobe", "Psycho Strobe")
+    MonstroVfx("motion", "Motion"), MonstroVfx("zoom", "Zoom"),
+    MonstroVfx("glitch", "Glitch"), MonstroVfx("rgb", "RGB"),
+    MonstroVfx("shake", "Shake"), MonstroVfx("strobe", "Strobe")
 )
 
 val ColorLibrary = listOf(
     MonstroPreset("none", "Raw State", "Original"),
     MonstroPreset("trap", "Trap Lord", "Vibrant 250%"),
-    MonstroPreset("dark", "Dark Energy", "Industrial High Contrast"),
+    MonstroPreset("dark", "Dark Energy", "Industrial High"),
     MonstroPreset("cinema", "Noir City", "Preto e Branco")
 )
 
@@ -78,17 +78,16 @@ fun MonstroIndustrialEditor() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     
-    // ESTADOS DO MOTOR
     var clips by remember { mutableStateOf(emptyList<MonstroClip>()) }
     var indiceAtivo by remember { mutableIntStateOf(0) }
     var abaSelecionada by remember { mutableIntStateOf(0) }
+    var vfxAtivos by remember { mutableStateOf(setOf<String>()) }
     var masterZoom by remember { mutableFloatStateOf(1f) }
     var safeMode by remember { mutableStateOf(true) }
     var estaExportando by remember { mutableStateOf(false) }
     var progressoExport by remember { mutableFloatStateOf(0f) }
     var aiStatus by remember { mutableStateOf("AI ENGINE: ACTIVE") }
 
-    // SELF-HEALING ENGINE (IA DE RECUPERAÇÃO)
     val exoPlayer = remember {
         ExoPlayer.Builder(context).build().apply {
             repeatMode = Player.REPEAT_MODE_ONE
@@ -126,7 +125,6 @@ fun MonstroIndustrialEditor() {
     Scaffold(containerColor = MonstroBg) { pad ->
         Column(Modifier.padding(pad).fillMaxSize().padding(16.dp)) {
             
-            // HEADER COM STATUS IA
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Column {
                     Text("MONSTRO V18", color = Color.White, fontWeight = FontWeight.Black, fontSize = 22.sp)
@@ -136,15 +134,14 @@ fun MonstroIndustrialEditor() {
                         Text(aiStatus, color = Color.Gray, fontSize = 8.sp, fontWeight = FontWeight.Bold)
                     }
                 }
-                Box(Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).background(Brush.linearGradient(listOf(MonstroAccent, MonstroPink))), Alignment.Center) {
+                Box(Modifier.size(36.dp).clip(RoundedCornerShape(8.dp)).background(MonstroAccent), Alignment.Center) {
                     Icon(Icons.Default.PlayArrow, null, tint = Color.White)
                 }
             }
             
             Spacer(Modifier.height(16.dp))
             
-            // PREVIEW BOX
-            Box(Modifier.fillMaxWidth().aspectRatio(16/9f).clip(RoundedCornerShape(16.dp)).background(DarkGrey)) {
+            Box(Modifier.fillMaxWidth().aspectRatio(16/9f).clip(RoundedCornerShape(12.dp)).background(DarkGrey)) {
                 if (clips.isEmpty()) {
                     Box(Modifier.fillMaxSize().clickable { permLauncher.launch(perm) }, Alignment.Center) {
                         Text("IMPORT MASTER", color = Color.Gray, fontSize = 10.sp, fontWeight = FontWeight.Black)
@@ -164,23 +161,24 @@ fun MonstroIndustrialEditor() {
                 }
             }
             
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(12.dp))
             
-            // TIMELINE
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 itemsIndexed(clips) { i, _ ->
-                    Box(Modifier.size(100.dp, 55.dp).clip(RoundedCornerShape(8.dp)).background(if(i == indiceAtivo) MonstroAccent.copy(0.15f) else DarkGrey).border(2.dp, if(i == indiceAtivo) MonstroAccent else Color.Transparent, RoundedCornerShape(8.dp)).clickable { indiceAtivo = i; exoPlayer.seekTo(i, 0L) }, Alignment.Center) {
+                    Box(Modifier.size(90.dp, 50.dp).clip(RoundedCornerShape(8.dp)).background(if(i == indiceAtivo) MonstroAccent.copy(0.15f) else DarkGrey).border(2.dp, if(i == indiceAtivo) MonstroAccent else Color.Transparent, RoundedCornerShape(8.dp)).clickable { indiceAtivo = i; exoPlayer.seekTo(i, 0L) }, Alignment.Center) {
                         Text("V$i", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Black)
                     }
                 }
             }
             
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(12.dp))
             
-            // CONTROL CENTER
+            // CHAMADA ALINHADA (TODOS OS PARÂMETROS CORRETOS)
             ControlCenter(
                 aba = abaSelecionada,
                 onAbaChange = { abaSelecionada = it },
+                vfxAtivos = vfxAtivos,
+                onVfxClick = { id -> vfxAtivos = if(vfxAtivos.contains(id)) vfxAtivos - id else vfxAtivos + id },
                 zoom = masterZoom,
                 onZoomChange = { masterZoom = it },
                 clips = clips,
@@ -192,7 +190,6 @@ fun MonstroIndustrialEditor() {
                 }
             )
 
-            // FOOTER / RENDER
             MonstroFooter(safeMode, { safeMode = it }, clips.isNotEmpty(), estaExportando) {
                 estaExportando = true
                 scope.launch {
@@ -210,39 +207,42 @@ fun MonstroIndustrialEditor() {
 }
 
 @Composable
-fun ColumnScope.ControlCenter(aba: Int, onAbaChange: (Int) -> Unit, zoom: Float, onZoomChange: (Float) -> Unit, clips: List<MonstroClip>, activeIdx: Int, onPresetClick: (String) -> Unit) {
-    TabRow(
-        selectedTabIndex = aba, 
-        containerColor = Color.Transparent, 
-        indicator = { tabPositions ->
-            if (aba < tabPositions.size) {
-                Box(Modifier.tabIndicatorOffset(tabPositions[aba]).height(3.dp).background(MonstroAccent))
-            }
-        },
-        divider = {}
-    ) {
-        Tab(selected = aba == 0, onClick = { onAbaChange(0) }) { Text("CHAOS", Modifier.padding(12.dp), fontSize = 10.sp, fontWeight = FontWeight.Black) }
-        Tab(selected = aba == 1, onClick = { onAbaChange(1) }) { Text("COLORS", Modifier.padding(12.dp), fontSize = 10.sp, fontWeight = FontWeight.Black) }
-    }
-    
-    Box(Modifier.weight(1f).padding(top = 12.dp)) {
-        if (aba == 0) {
-            Column {
-                LazyVerticalGrid(columns = GridCells.Fixed(2), modifier = Modifier.height(160.dp), Arrangement.spacedBy(8.dp)) {
-                    items(ChaosEffects) { fx ->
-                        Box(Modifier.fillMaxWidth().height(40.dp).clip(RoundedCornerShape(8.dp)).background(DarkGrey), Alignment.Center) {
-                            Text(fx.nome.uppercase(), color = Color.Gray, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+fun ControlCenter(aba: Int, onAbaChange: (Int) -> Unit, vfxAtivos: Set<String>, onVfxClick: (String) -> Unit, zoom: Float, onZoomChange: (Float) -> Unit, clips: List<MonstroClip>, activeIdx: Int, onPresetClick: (String) -> Unit) {
+    Column(Modifier.fillMaxWidth()) {
+        TabRow(
+            selectedTabIndex = aba, 
+            containerColor = Color.Transparent, 
+            indicator = { tabPositions ->
+                if (aba < tabPositions.size) {
+                    Box(Modifier.tabIndicatorOffset(tabPositions[aba]).height(3.dp).background(MonstroAccent))
+                }
+            },
+            divider = {}
+        ) {
+            Tab(selected = aba == 0, onClick = { onAbaChange(0) }) { Text("CHAOS", Modifier.padding(10.dp), fontSize = 10.sp, fontWeight = FontWeight.Black) }
+            Tab(selected = aba == 1, onClick = { onAbaChange(1) }) { Text("COLORS", Modifier.padding(10.dp), fontSize = 10.sp, fontWeight = FontWeight.Black) }
+        }
+        
+        Box(Modifier.height(160.dp).padding(top = 10.dp)) {
+            if (aba == 0) {
+                Column {
+                    LazyVerticalGrid(columns = GridCells.Fixed(2), modifier = Modifier.height(110.dp), Arrangement.spacedBy(6.dp)) {
+                        items(ChaosEffects) { fx ->
+                            val active = vfxAtivos.contains(fx.id)
+                            Box(Modifier.fillMaxWidth().height(36.dp).clip(RoundedCornerShape(8.dp)).background(if(active) MonstroAccent else DarkGrey).clickable { onVfxClick(fx.id) }, Alignment.Center) {
+                                Text(fx.nome.uppercase(), color = if(active) Color.White else Color.Gray, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
+                    Slider(value = zoom, onValueChange = onZoomChange, valueRange = 1f..3f, colors = SliderDefaults.colors(thumbColor = MonstroAccent, activeTrackColor = MonstroAccent))
                 }
-                Slider(value = zoom, onValueChange = onZoomChange, valueRange = 1f..3f, colors = SliderDefaults.colors(thumbColor = MonstroAccent, activeTrackColor = MonstroAccent))
-            }
-        } else {
-            LazyVerticalGrid(columns = GridCells.Fixed(2), Arrangement.spacedBy(8.dp)) {
-                items(ColorLibrary) { p ->
-                    val sel = clips.getOrNull(activeIdx)?.preset == p.id
-                    Column(Modifier.clip(RoundedCornerShape(12.dp)).background(if(sel) MonstroPink.copy(0.15f) else DarkGrey).border(1.dp, if(sel) MonstroPink else Color.Transparent, RoundedCornerShape(12.dp)).clickable { onPresetClick(p.id) }.padding(10.dp)) {
-                        Text(p.nome, color = Color.White, fontWeight = FontWeight.Black, fontSize = 11.sp)
+            } else {
+                LazyVerticalGrid(columns = GridCells.Fixed(2), Arrangement.spacedBy(8.dp)) {
+                    items(ColorLibrary) { p ->
+                        val sel = clips.getOrNull(activeIdx)?.preset == p.id
+                        Box(Modifier.height(45.dp).clip(RoundedCornerShape(8.dp)).background(if(sel) MonstroPink.copy(0.2f) else DarkGrey).border(1.dp, if(sel) MonstroPink else Color.Transparent, RoundedCornerShape(8.dp)).clickable { onPresetClick(p.id) }.padding(8.dp), Alignment.Center) {
+                            Text(p.nome, color = Color.White, fontWeight = FontWeight.Black, fontSize = 10.sp)
+                        }
                     }
                 }
             }
@@ -252,11 +252,11 @@ fun ColumnScope.ControlCenter(aba: Int, onAbaChange: (Int) -> Unit, zoom: Float,
 
 @Composable
 fun MonstroFooter(safe: Boolean, onSafe: (Boolean) -> Unit, hasClips: Boolean, exporting: Boolean, onRender: () -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-        Column { Text("SAFE MODE", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold); Text("A30s TURBO", color = Color.Gray, fontSize = 8.sp) }
+    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+        Column { Text("SAFE MODE", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold); Text("A30s TURBO", color = Color.Gray, fontSize = 7.sp) }
         Switch(checked = safe, onCheckedChange = onSafe)
     }
-    Button(onClick = onRender, Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(14.dp), colors = ButtonDefaults.buttonColors(containerColor = MonstroAccent), enabled = hasClips && !exporting) {
+    Button(onClick = onRender, Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.buttonColors(containerColor = MonstroAccent), enabled = hasClips && !estaExportando) {
         Text("RENDERIZAR V18", fontWeight = FontWeight.Black)
     }
 }

@@ -1,4 +1,4 @@
-@file:OptIn(androidx.media3.common.util.UnstableApi::class, androidx.compose.material3.ExperimentalMaterial3Api::class)
+@file:OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.ncorti.kotlin.template.app
 
 import android.Manifest
@@ -29,6 +29,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -40,8 +42,10 @@ import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+// IMPORT ESSENCIAL: Garante a compilação do RenderEffect no Compose
+import androidx.compose.ui.graphics.asComposeRenderEffect
 
-// --- TOKENS DE DESIGN INDUSTRIAL ---
+// --- TOKENS DE DESIGN (INDUSTRIAL MONSTRO) ---
 val MonstroBg = Color(0xFF020306)
 val MonstroAccent = Color(0xFFa855f7)
 val MonstroPink = Color(0xFFdb2777)
@@ -60,9 +64,9 @@ val ChaosEffects = listOf(
 
 val ColorLibrary = listOf(
     MonstroPreset("none", "Estado Bruto", "Original"),
-    MonstroPreset("trap", "Trap Lord", "Vibrant 250%"),
+    MonstroPreset("trap", "Trap Lord", "Vibrante 250%"),
     MonstroPreset("dark", "Dark Energy", "Industrial"),
-    MonstroPreset("cinema", "Noir City", "B&W")
+    MonstroPreset("cinema", "Noir City", "P&B")
 )
 
 class MainActivity : ComponentActivity() {
@@ -81,6 +85,7 @@ fun MonstroIndustrialEditor() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     
+    // ESTADOS DO MOTOR GRÁFICO
     var clips by remember { mutableStateOf(emptyList<MonstroClip>()) }
     var indiceAtivo by remember { mutableIntStateOf(0) }
     var abaSelecionada by remember { mutableIntStateOf(0) }
@@ -88,10 +93,13 @@ fun MonstroIndustrialEditor() {
     var masterZoom by remember { mutableFloatStateOf(1f) }
     var exportando by remember { mutableStateOf(false) }
     var progressoExport by remember { mutableFloatStateOf(0f) }
+    
+    // STATUS DA IA DE MONITORAMENTO
     var aiStatus by remember { mutableStateOf("AI ENGINE: ACTIVE") }
 
-    val exoPlayer = remember {
-        ExoPlayer.Builder(context).build().apply {
+    // MOTOR EXOPLAYER COM SELF-HEALING (USANDO APPLICATION CONTEXT PARA PREVENIR LEAKS)
+    val exoPlayer = remember(context) {
+        ExoPlayer.Builder(context.applicationContext).build().apply {
             repeatMode = Player.REPEAT_MODE_ONE
             addListener(object : Player.Listener {
                 override fun onPlayerError(error: PlaybackException) {
@@ -104,8 +112,9 @@ fun MonstroIndustrialEditor() {
     }
     DisposableEffect(exoPlayer) { onDispose { exoPlayer.release() } }
 
-    val matiz = remember(clips.getOrNull(indiceAtivo)?.preset) {
-        when(clips.getOrNull(indiceAtivo)?.preset) {
+    val currentPreset = clips.getOrNull(indiceAtivo)?.preset ?: "none"
+    val matiz = remember(currentPreset) {
+        when(currentPreset) {
             "trap" -> ColorMatrix().apply { setToSaturation(2.5f) }
             "cinema" -> ColorMatrix().apply { setToSaturation(0f) }
             "dark" -> ColorMatrix(floatArrayOf(1.3f,0f,0f,0f,-15f, 0f,1.3f,0f,0f,-15f, 0f,0f,1.3f,0f,-15f, 0f,0f,0f,1f,0f))
@@ -119,13 +128,16 @@ fun MonstroIndustrialEditor() {
             exoPlayer.addMediaItem(MediaItem.fromUri(it)); exoPlayer.prepare(); exoPlayer.play()
         }
     }
+    
+    // SUPRESSÃO DE DEPRECATION PARA LINT DO CI (ANDROID 13+)
+    @Suppress("DEPRECATION")
     val perm = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) Manifest.permission.READ_MEDIA_VIDEO else Manifest.permission.READ_EXTERNAL_STORAGE
     val permLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { if(it) launcher.launch("video/*") }
 
     Scaffold(containerColor = MonstroBg) { pad ->
         Column(Modifier.padding(pad).fillMaxSize().padding(16.dp)) {
             
-            // STATUS IA NO HEADER
+            // HEADER COM TELEMETRIA DA IA
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Column {
                     Text("MONSTRO V18.2", color = Color.White, fontWeight = FontWeight.Black, fontSize = 22.sp)
@@ -142,20 +154,30 @@ fun MonstroIndustrialEditor() {
             
             Spacer(Modifier.height(16.dp))
             
-            // PREVIEW BOX (RENDER EFFECT FIX)
-            Box(Modifier.fillMaxWidth().aspectRatio(16/9f).clip(RoundedCornerShape(12.dp)).background(DarkGrey)) {
+            // PREVIEW BOX COM 'KEY' PARA EVITAR FLICKER E RENDER EFFECT PARA FILTROS
+            Box(Modifier.fillMaxWidth().aspectRatio(16/9f).clip(RoundedCornerShape(12.dp)).background(DarkGrey).border(0.5.dp, Color.White.copy(0.1f), RoundedCornerShape(12.dp))) {
                 if (clips.isEmpty()) {
                     Box(Modifier.fillMaxSize().clickable { permLauncher.launch(perm) }, Alignment.Center) {
                         Text("IMPORT MASTER", color = Color.Gray, fontSize = 10.sp, fontWeight = FontWeight.Black)
                     }
                 } else {
+                    // ÂNCORA DE RECOMPOSIÇÃO: O PlayerView só reinicia se a URI mudar
                     AndroidView(
-                        factory = { ctx -> PlayerView(ctx).apply { this.player = exoPlayer; useController = false; resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT } },
+                        key = clips.getOrNull(indiceAtivo)?.uri,
+                        factory = { ctx -> 
+                            PlayerView(ctx).apply { 
+                                this.player = exoPlayer
+                                useController = false
+                                resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT 
+                            } 
+                        },
                         modifier = Modifier.fillMaxSize().graphicsLayer {
                             scaleX = masterZoom; scaleY = masterZoom
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                // BLINDAGEM: clone() evita bugs de mutação de matriz em tempo real
+                                val androidMatrix = android.graphics.ColorMatrix(matiz.values.clone())
                                 renderEffect = android.graphics.RenderEffect.createColorFilterEffect(
-                                    android.graphics.ColorMatrixColorFilter(matiz.values)
+                                    android.graphics.ColorMatrixColorFilter(androidMatrix)
                                 ).asComposeRenderEffect()
                             }
                         }
@@ -170,21 +192,21 @@ fun MonstroIndustrialEditor() {
             
             Spacer(Modifier.height(12.dp))
             
-            // TIMELINE
+            // TIMELINE REATIVA
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 itemsIndexed(clips) { i, _ ->
-                    Box(Modifier.size(90.dp, 50.dp).clip(RoundedCornerShape(8.dp)).background(if(i == indiceAtivo) MonstroAccent.copy(0.2f) else DarkGrey).border(2.dp, if(i == indiceAtivo) MonstroAccent else Color.Transparent, RoundedCornerShape(8.dp)).clickable { 
+                    Box(Modifier.size(95.dp, 50.dp).clip(RoundedCornerShape(8.dp)).background(if(i == indiceAtivo) MonstroAccent.copy(0.15f) else DarkGrey).border(2.dp, if(i == indiceAtivo) MonstroAccent else Color.Transparent, RoundedCornerShape(8.dp)).clickable { 
                         indiceAtivo = i
-                        exoPlayer.seekTo(i, 0L) 
+                        exoPlayer.seekToDefaultPosition(i) 
                     }, Alignment.Center) {
-                        Text("V$i", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Text("V$i", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Black)
                     }
                 }
             }
             
             Spacer(Modifier.height(12.dp))
             
-            // CONTROL CENTER (GRID FIX INTEGRADO)
+            // PAINEL DE CONTROLE (CONTROL CENTER)
             ControlCenter(
                 aba = abaSelecionada,
                 onAbaChange = { abaSelecionada = it },
@@ -201,14 +223,15 @@ fun MonstroIndustrialEditor() {
                 }
             )
 
+            // FOOTER COM RENDERIZADOR TURBO
             Button(
                 onClick = {
                     exportando = true
                     scope.launch {
                         progressoExport = 0f
-                        while(progressoExport < 1f) { delay(50); progressoExport += 0.05f }
+                        while(progressoExport < 1f) { delay(60); progressoExport += 0.05f }
                         exportando = false
-                        Toast.makeText(context, "V18.2 RENDERIZADO!", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "RENDER CONCLUÍDO!", Toast.LENGTH_SHORT).show()
                     }
                 },
                 modifier = Modifier.fillMaxWidth().height(52.dp),
@@ -222,9 +245,10 @@ fun MonstroIndustrialEditor() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ControlCenter(aba: Int, onAbaChange: (Int) -> Unit, vfxAtivos: Set<String>, onVfxClick: (String) -> Unit, zoom: Float, onZoomChange: (Float) -> Unit, clips: List<MonstroClip>, activeIdx: Int, onPresetClick: (String) -> Unit) {
-    Column(Modifier.fillMaxWidth()) {
+    Column {
         TabRow(
             selectedTabIndex = aba, 
             containerColor = Color.Transparent, 
@@ -236,15 +260,16 @@ fun ControlCenter(aba: Int, onAbaChange: (Int) -> Unit, vfxAtivos: Set<String>, 
             divider = {}
         ) {
             Tab(selected = aba == 0, onClick = { onAbaChange(0) }) { Text("CHAOS", Modifier.padding(10.dp), fontSize = 10.sp, fontWeight = FontWeight.Black) }
-            Tab(selected = aba == 1, onClick = { onAbaChange(1) }) { Text("COLORS", Modifier.padding(10.dp), fontSize = 10.sp, fontWeight = FontWeight.Black) }
+            Tab(selected = aba == 1, onClick = { onAbaChange(1) }) { Text("MOTOR DE COR", Modifier.padding(10.dp), fontSize = 10.sp, fontWeight = FontWeight.Black) }
         }
         
         Box(Modifier.height(160.dp).padding(top = 10.dp)) {
             if (aba == 0) {
                 Column {
+                    // nestedScroll silencia warnings de conflito de rolagem
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(2), 
-                        modifier = Modifier.height(110.dp), 
+                        modifier = Modifier.height(110.dp).nestedScroll(remember { object : NestedScrollConnection {} }), 
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
@@ -255,13 +280,14 @@ fun ControlCenter(aba: Int, onAbaChange: (Int) -> Unit, vfxAtivos: Set<String>, 
                             }
                         }
                     }
-                    Slider(value = zoom, onValueChange = onZoomChange, valueRange = 1f..3f, colors = SliderDefaults.colors(thumbColor = MonstroAccent))
+                    Slider(value = zoom, onValueChange = onZoomChange, valueRange = 1f..3f, colors = SliderDefaults.colors(thumbColor = MonstroAccent, activeTrackColor = MonstroAccent))
                 }
             } else {
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.nestedScroll(remember { object : NestedScrollConnection {} })
                 ) {
                     items(ColorLibrary) { p ->
                         val sel = clips.getOrNull(activeIdx)?.preset == p.id

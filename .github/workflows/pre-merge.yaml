@@ -27,17 +27,13 @@ jobs:
       - name: Setup Gradle (Reset Total)
         uses: gradle/actions/setup-gradle@v4
         with:
-          # Como você limpou o cache manualmente, desativamos aqui para garantir 
-          # que o robô não tente criar um cache corrompido de novo agora.
-          cache-disabled: true
+          cache-disabled: true # Garante que nada do cache antigo quebre o build
           cache-cleanup: always
 
       - name: Compilar APK Monstro
-        # O stacktrace vai nos mostrar a linha exata do erro se o Kotlin falhar
         run: ./gradlew assembleDebug --stacktrace
 
       - name: Upload APK Final
-        # Assim que o círculo ficar verde, o APK aparece aqui para download
         uses: actions/upload-artifact@v4
         with:
           name: Monstro-V18-APK

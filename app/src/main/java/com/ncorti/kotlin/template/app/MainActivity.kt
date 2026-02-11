@@ -107,7 +107,6 @@ fun MonstroIndustrialEditor() {
     }
     DisposableEffect(exoPlayer) { onDispose { exoPlayer.release() } }
 
-    // Lógica de Cores Dinâmica (Extraída do segundo código)
     val currentPreset = clips.getOrNull(indiceAtivo)?.preset ?: "none"
     val matizCromatica = remember(currentPreset) {
         when(currentPreset) {
@@ -137,7 +136,6 @@ fun MonstroIndustrialEditor() {
             MonstroHeader()
             Spacer(Modifier.height(16.dp))
             
-            // Preview com Matriz de Cor e Zoom aplicados
             MonstroPreview(exoPlayer, masterZoom, matizCromatica, estaExportando, progressoExport, clips) { permLauncher.launch(perm) }
             
             Spacer(Modifier.height(16.dp))
@@ -230,6 +228,7 @@ fun MonstroTimeline(clips: List<MonstroClip>, active: Int, onSelect: (Int) -> Un
     }
 }
 
+@androidx.compose.material3.ExperimentalMaterial3Api
 @Composable
 fun ColumnScope.ControlCenter(aba: Int, onAbaChange: (Int) -> Unit, vfxAtivos: Set<String>, onVfxClick: (String) -> Unit, zoom: Float, onZoomChange: (Float) -> Unit, clips: List<MonstroClip>, activeIdx: Int, onPresetClick: (String) -> Unit) {
     TabRow(
@@ -237,7 +236,13 @@ fun ColumnScope.ControlCenter(aba: Int, onAbaChange: (Int) -> Unit, vfxAtivos: S
         containerColor = Color.Transparent, 
         indicator = { tabPositions ->
             if (aba < tabPositions.size) {
-                Box(Modifier.tabIndicatorOffset(tabPositions[aba]).height(3.dp).background(MonstroAccent))
+                // INDICADOR SIMPLIFICADO: Imune a conflitos de biblioteca
+                Box(
+                    Modifier
+                        .tabIndicatorOffset(tabPositions[aba])
+                        .height(3.dp)
+                        .background(MonstroAccent)
+                )
             }
         },
         divider = {}
@@ -302,3 +307,4 @@ fun MonstroFooter(safe: Boolean, onSafe: (Boolean) -> Unit, hasClips: Boolean, e
         Text("RENDERIZAR V18", fontWeight = FontWeight.Black)
     }
 }
+

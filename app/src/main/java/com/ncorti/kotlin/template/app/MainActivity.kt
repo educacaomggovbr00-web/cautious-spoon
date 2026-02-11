@@ -107,25 +107,17 @@ fun MonstroIndustrialEditor() {
         Column(Modifier.padding(pad).fillMaxSize().padding(16.dp)) {
             IndustrialHeader()
             Spacer(Modifier.height(16.dp))
-            PreviewBox(exoPlayer, masterZoom, estaExportando, progressoExport, clips) { launcher.launch(perm) }
+            PreviewContainer(exoPlayer, masterZoom, estaExportando, progressoExport, clips) { launcher.launch(perm) }
             Spacer(Modifier.height(16.dp))
-            TimelineRow(clips, indiceAtivo) { i -> indiceAtivo = i; exoPlayer.seekToDefaultPosition(i) }
+            TimelineStrip(clips, indiceAtivo) { i -> indiceAtivo = i; exoPlayer.seekToDefaultPosition(i) }
             Spacer(Modifier.height(16.dp))
             
-            // ABAS
-            TabRow(selectedTabIndex = abaSelecionada, containerColor = Color.Transparent, indicator = { positions ->
-                if (abaSelecionada < positions.size) TabRowDefaults.SecondaryIndicator(Modifier.tabIndicatorOffset(positions[abaSelecionada]), color = MonstroAccent)
-            }) {
-                Tab(selected = abaSelecionada == 0, onClick = { abaSelecionada = 0 }) { Text("CHAOS FX", Modifier.padding(12.dp), fontSize = 10.sp, fontWeight = FontWeight.Black) }
-                Tab(selected = abaSelecionada == 1, onClick = { abaSelecionada = 1 }) { Text("COLORS", Modifier.padding(12.dp), fontSize = 10.sp, fontWeight = FontWeight.Black) }
+            // CONTROLES MODULARIZADOS (CHAOS FX + PRESETS)
+            ControlTabs(abaSelecionada, { abaSelecionada = it }, vfxAtivos, { id -> vfxAtivos = if(vfxAtivos.contains(id)) vfxAtivos - id else vfxAtivos + id }, masterZoom, { masterZoom = it }, clips, indiceAtivo) { p ->
+                if(indiceAtivo in clips.indices) clips = clips.toMutableList().apply { this[indiceAtivo] = this[indiceAtivo].copy(preset = p) }
             }
 
-            Box(Modifier.weight(1f).padding(top = 12.dp)) {
-                if (abaSelecionada == 0) ChaosPanel(vfxAtivos, { id -> vfxAtivos = if(vfxAtivos.contains(id)) vfxAtivos - id else vfxAtivos + id }, masterZoom, { masterZoom = it })
-                else PresetPanel(clips, indiceAtivo) { p -> if(indiceAtivo in clips.indices) clips = clips.toMutableList().apply { this[indiceAtivo] = this[indiceAtivo].copy(preset = p) } }
-            }
-
-            RenderSection(safeMode, { safeMode = it }, clips.isNotEmpty(), estaExportando) {
+            RenderFooter(safeMode, { safeMode = it }, clips.isNotEmpty(), estaExportando) {
                 estaExportando = true
                 scope.launch {
                     progressoExport = 0f
@@ -153,7 +145,7 @@ fun IndustrialHeader() {
 
 @UnstableApi
 @Composable
-fun PreviewBox(player: ExoPlayer, zoom: Float, exporting: Boolean, progress: Float, clips: List<MonstroClip>, onImport: () -> Unit) {
+fun PreviewContainer(player: ExoPlayer, zoom: Float, exporting: Boolean, progress: Float, clips: List<MonstroClip>, onImport: () -> Unit) {
     Box(Modifier.fillMaxWidth().aspectRatio(16/9f).clip(RoundedCornerShape(12.dp)).background(DarkGrey).border(1.dp, Color.White.copy(0.05f), RoundedCornerShape(12.dp))) {
         if (clips.isEmpty()) {
             Box(Modifier.fillMaxSize().clickable { onImport() }, Alignment.Center) {
@@ -171,7 +163,7 @@ fun PreviewBox(player: ExoPlayer, zoom: Float, exporting: Boolean, progress: Flo
 }
 
 @Composable
-fun TimelineRow(clips: List<MonstroClip>, active: Int, onSelect: (Int) -> Unit) {
+fun TimelineStrip(clips: List<MonstroClip>, active: Int, onSelect: (Int) -> Unit) {
     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         itemsIndexed(clips) { i, _ ->
             Box(Modifier.size(100.dp, 50.dp).clip(RoundedCornerShape(8.dp)).background(if(i == active) MonstroAccent.copy(0.1f) else DarkGrey).border(1.5.dp, if(i == active) MonstroAccent else Color.Transparent, RoundedCornerShape(8.dp)).clickable { onSelect(i) }, Alignment.Center) {
@@ -182,7 +174,21 @@ fun TimelineRow(clips: List<MonstroClip>, active: Int, onSelect: (Int) -> Unit) 
 }
 
 @Composable
-fun ChaosPanel(vfx: Set<String>, onVfx: (String) -> Unit, zoom: Float, onZoom: (Float) -> Unit) {
+fun ControlTabs(aba: Int, onAbaChange: (Int) -> Unit, vfx: Set<String>, onVfx: (String) -> Unit, zoom: Float, onZoom: (Float) -> Unit, clips: List<MonstroClip>, active: Int, onPreset: (String) -> Unit) {
+    TabRow(selectedTabIndex = aba, containerColor = Color.Transparent, indicator = { positions ->
+        if (aba < positions.size) TabRowDefaults.SecondaryIndicator(Modifier.tabIndicatorOffset(positions[aba]), color = MonstroAccent)
+    }) {
+        Tab(selected = aba == 0, onClick = { onAbaChange(0) }) { Text("CHAOS FX", Modifier.padding(12.dp), fontSize = 10.sp, fontWeight = FontWeight.Black) }
+        Tab(selected = aba == 1, onClick = { onAbaChange(1) }) { Text("COLORS", Modifier.padding(12.dp), fontSize = 10.sp, fontWeight = FontWeight.Black) }
+    }
+    Box(Modifier.weight(1f).padding(top = 12.dp)) {
+        if (aba == 0) ChaosList(vfx, onVfx, zoom, onZoom)
+        else PresetList(clips, active, onPreset)
+    }
+}
+
+@Composable
+fun ChaosList(vfx: Set<String>, onVfx: (String) -> Unit, zoom: Float, onZoom: (Float) -> Unit) {
     Column {
         LazyVerticalGrid(columns = GridCells.Fixed(2), Modifier.height(180.dp), Arrangement.spacedBy(8.dp), Arrangement.spacedBy(8.dp)) {
             items(ChaosEffects) { fx ->
@@ -197,20 +203,19 @@ fun ChaosPanel(vfx: Set<String>, onVfx: (String) -> Unit, zoom: Float, onZoom: (
 }
 
 @Composable
-fun PresetPanel(clips: List<MonstroClip>, active: Int, onPreset: (String) -> Unit) {
+fun PresetList(clips: List<MonstroClip>, active: Int, onPreset: (String) -> Unit) {
     LazyVerticalGrid(columns = GridCells.Fixed(2), Arrangement.spacedBy(8.dp), Arrangement.spacedBy(8.dp)) {
         items(ColorLibrary) { p ->
             val sel = clips.getOrNull(active)?.preset == p.id
             Column(Modifier.clip(RoundedCornerShape(10.dp)).background(if(sel) MonstroPink.copy(0.1f) else DarkGrey).border(1.dp, if(sel) MonstroPink else Color.Transparent, RoundedCornerShape(10.dp)).clickable { onPreset(p.id) }.padding(10.dp)) {
-                Text(p.nome, color = Color.White, fontWeight = FontWeight.Black, fontSize = 10.sp)
-                Text(p.desc, color = Color.Gray, fontSize = 7.sp)
+                Text(p.nome, color = Color.White, fontWeight = FontWeight.Black, fontSize = 10.sp); Text(p.desc, color = Color.Gray, fontSize = 7.sp)
             }
         }
     }
 }
 
 @Composable
-fun RenderSection(safe: Boolean, onSafe: (Boolean) -> Unit, hasClips: Boolean, exporting: Boolean, onRender: () -> Unit) {
+fun RenderFooter(safe: Boolean, onSafe: (Boolean) -> Unit, hasClips: Boolean, exporting: Boolean, onRender: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
         Text("SAFE MODE (A30s)", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
         Switch(checked = safe, onCheckedChange = onSafe)

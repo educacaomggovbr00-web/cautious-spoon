@@ -105,25 +105,24 @@ fun MonstroIndustrialEditor() {
     }
     DisposableEffect(exoPlayer) { onDispose { exoPlayer.release() } }
 
-    val seletor = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let {
             clips = clips + MonstroClip(it)
             exoPlayer.addMediaItem(MediaItem.fromUri(it)); exoPlayer.prepare(); exoPlayer.play()
         }
     }
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { if(it) seletor.launch("video/*") }
+    val permLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { if(it) launcher.launch("video/*") }
     val perm = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) Manifest.permission.READ_MEDIA_VIDEO else Manifest.permission.READ_EXTERNAL_STORAGE
 
     Scaffold(containerColor = MonstroBg) { pad ->
         Column(Modifier.padding(pad).fillMaxSize().padding(16.dp)) {
             MonstroHeader()
             Spacer(Modifier.height(16.dp))
-            MonstroPreview(exoPlayer, masterZoom, estaExportando, progressoExport, clips) { launcher.launch(perm) }
+            MonstroPreview(exoPlayer, masterZoom, estaExportando, progressoExport, clips) { permLauncher.launch(perm) }
             Spacer(Modifier.height(16.dp))
             MonstroTimeline(clips, indiceAtivo) { i -> indiceAtivo = i; exoPlayer.seekToDefaultPosition(i) }
             Spacer(Modifier.height(16.dp))
             
-            // CONTROLE CENTRAL MODULARIZADO
             ControlCenter(
                 aba = abaSelecionada,
                 onAbaChange = { abaSelecionada = it },
@@ -140,7 +139,7 @@ fun MonstroIndustrialEditor() {
                 estaExportando = true
                 scope.launch {
                     progressoExport = 0f
-                    while(progressoExport < 1f) { delay(if(safeMode) 75 else 40); progressoExport += 0.05f }
+                    while(progressoExport < 1f) { delay(if(safeMode) 70 else 40); progressoExport += 0.05f }
                     estaExportando = false
                     Toast.makeText(context, "RENDER CONCLUÍDO!", Toast.LENGTH_SHORT).show()
                 }
@@ -154,7 +153,7 @@ fun MonstroHeader() {
     Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
         Column {
             Text("MONSTRO V18", color = Color.White, fontWeight = FontWeight.Black, fontSize = 22.sp)
-            Text("INDUSTRIAL // GG-VERSION", color = Color.Gray, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+            Text("INDUSTRIAL // SONAR-SAFE", color = Color.Gray, fontSize = 8.sp, fontWeight = FontWeight.Bold)
         }
         Box(Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).background(Brush.linearGradient(listOf(MonstroAccent, MonstroPink))), Alignment.Center) {
             Icon(Icons.Default.PlayArrow, null, tint = Color.White)
@@ -202,7 +201,7 @@ fun ColumnScope.ControlCenter(aba: Int, onAbaChange: (Int) -> Unit, vfxAtivos: S
         containerColor = Color.Transparent, 
         indicator = { tabPositions ->
             if (aba < tabPositions.size) {
-                TabRowDefaults.SecondaryIndicator(
+                TabRowDefaults.Indicator(
                     modifier = Modifier.tabIndicatorOffset(tabPositions[aba]),
                     color = MonstroAccent
                 )

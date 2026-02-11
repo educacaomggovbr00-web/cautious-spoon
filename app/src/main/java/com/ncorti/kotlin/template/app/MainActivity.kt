@@ -45,7 +45,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import kotlin.random.Random
 
-// --- DESIGN SYSTEM (INDUSTRIAL MONSTRO) ---
+// --- DESIGN SYSTEM MONSTRO ---
 val MonstroBg = Color(0xFF020306)
 val MonstroAccent = Color(0xFFa855f7)
 val MonstroPink = Color(0xFFdb2777)
@@ -67,11 +67,10 @@ val ChaosEffects = listOf(
 
 val ColorLibrary = listOf(
     MonstroPreset("none", "Estado Bruto", "Original"),
-    MonstroPreset("trap", "Trap Lord", "Vibrante 250%"),
+    MonstroPreset("trap", "Trap Lord", "Vibrante"),
     MonstroPreset("dark", "Dark Energy", "Industrial"),
-    MonstroPreset("cinema", "Noir City", "P&B Profundo"),
-    MonstroPreset("acid", "Acid Trip", "Psicodélico"),
-    MonstroPreset("vintage", "Old School", "VHS")
+    MonstroPreset("cinema", "Noir City", "P&B"),
+    MonstroPreset("acid", "Acid Trip", "Psicodélico")
 )
 
 class MainActivity : ComponentActivity() {
@@ -90,7 +89,7 @@ fun MonstroIndustrialEditor() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     
-    // ESTADOS DO EDITOR
+    // --- ESTADOS GERAIS ---
     var clips by remember { mutableStateOf(emptyList<MonstroClip>()) }
     var indiceAtivo by remember { mutableIntStateOf(0) }
     var abaSelecionada by remember { mutableIntStateOf(0) }
@@ -98,10 +97,9 @@ fun MonstroIndustrialEditor() {
     var masterZoom by remember { mutableFloatStateOf(1f) }
     var exportando by remember { mutableStateOf(false) }
     var progressoExport by remember { mutableFloatStateOf(0f) }
-    var aiStatus by remember { mutableStateOf("AI ENGINE: ACTIVE") }
 
-    // MOTOR DE ANIMAÇÃO (CAOS E CORES)
-    val infiniteTransition = rememberInfiniteTransition(label = "MonstroMotor")
+    // --- MOTOR DE ANIMAÇÃO (DECLARADO NO TOPO PARA EVITAR ERROS DE ESCOPO) ---
+    val infiniteTransition = rememberInfiniteTransition(label = "MonstroEngine")
     
     val shakeAnim by infiniteTransition.animateFloat(
         initialValue = -5f, targetValue = 5f,
@@ -109,32 +107,36 @@ fun MonstroIndustrialEditor() {
     )
     
     val strobeAnim by infiniteTransition.animateFloat(
-        initialValue = 1f, targetValue = 0.2f,
-        animationSpec = infiniteRepeatable(tween(50, easing = LinearEasing), RepeatMode.Reverse), label = "Strobe"
+        initialValue = 1f, targetValue = 0f,
+        animationSpec = infiniteRepeatable(tween(60, easing = LinearEasing), RepeatMode.Reverse), label = "Strobe"
     )
 
     val autoZoomAnim by infiniteTransition.animateFloat(
         initialValue = 1f, targetValue = 1.15f,
-        animationSpec = infiniteRepeatable(tween(500, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "AutoZoom"
+        animationSpec = infiniteRepeatable(tween(450, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "Zoom"
     )
 
-    // CORREÇÃO: Variáveis de rotação de cor para o efeito Acid e correções do build
     val rotateRed by infiniteTransition.animateFloat(
-        initialValue = 0f, targetValue = 360f,
-        animationSpec = infiniteRepeatable(tween(2000, easing = LinearEasing)), label = "RotateRed"
+        initialValue = 0f, targetValue = 15f,
+        animationSpec = infiniteRepeatable(tween(150, easing = LinearEasing), RepeatMode.Reverse), label = "Red"
     )
-    val rotateBlue by remember { mutableFloatStateOf(0f) }
 
-    var glitchOffset by remember { mutableStateOf(0f) }
+    val rotateBlue by infiniteTransition.animateFloat(
+        initialValue = 0f, targetValue = -15f,
+        animationSpec = infiniteRepeatable(tween(200, easing = LinearEasing), RepeatMode.Reverse), label = "Blue"
+    )
+
+    // --- LOGICA DE GLITCH ---
+    var glitchX by remember { mutableStateOf(0f) }
     LaunchedEffect(vfxAtivos.contains("glitch")) {
         while(vfxAtivos.contains("glitch")) {
-            glitchOffset = if (Random.nextFloat() > 0.8f) Random.nextFloat() * 15f else 0f
-            delay(80)
+            glitchX = if (Random.nextFloat() > 0.85f) Random.nextFloat() * 20f else 0f
+            delay(100)
         }
-        glitchOffset = 0f
+        glitchX = 0f
     }
 
-    // MOTOR EXOPLAYER
+    // --- MOTOR EXOPLAYER ---
     val exoPlayer = remember(context) {
         ExoPlayer.Builder(context.applicationContext).build().apply {
             repeatMode = Player.REPEAT_MODE_ONE
@@ -142,21 +144,21 @@ fun MonstroIndustrialEditor() {
     }
     DisposableEffect(exoPlayer) { onDispose { exoPlayer.release() } }
 
+    // --- PROCESSAMENTO DE COR ---
     val currentPreset = clips.getOrNull(indiceAtivo)?.preset ?: "none"
     val matiz = remember(currentPreset, vfxAtivos) {
         val matrix = ColorMatrix()
         when(currentPreset) {
-            "trap" -> matrix.setToSaturation(2.8f)
-            "cinema" -> matrix.setToSaturation(0.1f)
+            "trap" -> matrix.setToSaturation(2.5f)
+            "cinema" -> matrix.setToSaturation(0f)
             "dark" -> matrix.apply { 
                 val m = values
-                m[0] = 1.4f; m[6] = 1.4f; m[12] = 1.4f
-                m[4] = -15f; m[9] = -15f; m[14] = -15f 
+                m[0] = 1.5f; m[6] = 1.5f; m[12] = 1.5f
+                m[4] = -25f; m[9] = -25f; m[14] = -25f 
             }
-            "acid" -> matrix.apply { rotateRed(45f); rotateBlue(45f); setToSaturation(2.5f) }
+            "acid" -> matrix.setToSaturation(3f)
             else -> matrix.setToSaturation(1f)
         }
-        if (vfxAtivos.contains("rgb")) { matrix.values[0] = 2f }
         matrix
     }
 
@@ -173,24 +175,24 @@ fun MonstroIndustrialEditor() {
     Scaffold(containerColor = MonstroBg) { pad ->
         Column(Modifier.padding(pad).fillMaxSize().padding(16.dp)) {
             
-            // HEADER COM TELEMETRIA
+            // HEADER
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Column {
                     Text("MONSTRO V18.2", color = Color.White, fontWeight = FontWeight.Black, fontSize = 22.sp)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(6.dp).background(EmeraldTurbo, CircleShape))
                         Spacer(Modifier.width(6.dp))
-                        Text(aiStatus, color = Color.Gray, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                        Text("AI ENGINE: ACTIVE", color = Color.Gray, fontSize = 8.sp, fontWeight = FontWeight.Bold)
                     }
                 }
-                Box(Modifier.size(36.dp).clip(RoundedCornerShape(8.dp)).background(MonstroAccent).clickable { /* Settings */ }, Alignment.Center) {
-                    Icon(Icons.Default.PlayArrow, null, tint = Color.White)
+                IconButton(onClick = { /* Configs */ }) {
+                    Icon(Icons.Default.PlayArrow, null, tint = MonstroAccent)
                 }
             }
             
             Spacer(Modifier.height(16.dp))
             
-            // ENGINE DE PREVIEW (VFX DINÂMICO)
+            // PREVIEW ENGINE (VFX DINÂMICO)
             Box(Modifier.fillMaxWidth().aspectRatio(16/9f).clip(RoundedCornerShape(12.dp)).background(DarkGrey)) {
                 if (clips.isEmpty()) {
                     Box(Modifier.fillMaxSize().clickable { permLauncher.launch(perm) }, Alignment.Center) {
@@ -211,8 +213,9 @@ fun MonstroIndustrialEditor() {
                                 val isStrobe = vfxAtivos.contains("strobe")
                                 val isAutoZoom = vfxAtivos.contains("smartzoom")
                                 val isGlitch = vfxAtivos.contains("glitch")
+                                val isRGB = vfxAtivos.contains("rgb")
 
-                                translationX = if(isShake) shakeAnim else 0f + if(isGlitch) glitchOffset else 0f
+                                translationX = if(isShake) shakeAnim else 0f + if(isGlitch) glitchX else 0f
                                 alpha = if(isStrobe && strobeAnim < 0.5f) 0.1f else 1f
                                 scaleX = masterZoom * (if(isAutoZoom) autoZoomAnim else 1f)
                                 scaleY = masterZoom * (if(isAutoZoom) autoZoomAnim else 1f)
@@ -220,24 +223,29 @@ fun MonstroIndustrialEditor() {
                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                                     val androidMatrix = android.graphics.ColorMatrix(matiz.values.clone())
                                     
-                                    // CORREÇÃO: Aplicando rotação de cores de forma segura para o build
-                                    if(currentPreset == "acid") {
-                                        androidMatrix.setRotate(0, rotateRed) // Eixo Vermelho
-                                        androidMatrix.setRotate(2, rotateBlue) // Eixo Azul
+                                    // APLICAÇÃO SEGURA DE ROTAÇÃO PARA RGB SPLIT OU ACID TRIP
+                                    if (isRGB || currentPreset == "acid") {
+                                        androidMatrix.setRotate(0, rotateRed) 
+                                        androidMatrix.setRotate(2, rotateBlue) 
                                     }
 
-                                    val filterEffect = android.graphics.RenderEffect.createColorFilterEffect(
+                                    val filter = android.graphics.RenderEffect.createColorFilterEffect(
                                         android.graphics.ColorMatrixColorFilter(androidMatrix)
                                     )
                                     
                                     renderEffect = if(vfxAtivos.contains("motionblur")) {
                                         android.graphics.RenderEffect.createBlurEffect(12f, 4f, android.graphics.Shader.TileMode.CLAMP)
                                     } else {
-                                        filterEffect
+                                        filter
                                     }.asComposeRenderEffect()
                                 }
                             }
                         )
+                    }
+                }
+                if (exportando) {
+                    Box(Modifier.fillMaxSize().background(Color.Black.copy(0.7f)), Alignment.Center) {
+                        CircularProgressIndicator(color = MonstroAccent, progress = progressoExport)
                     }
                 }
             }
@@ -247,18 +255,18 @@ fun MonstroIndustrialEditor() {
             // TIMELINE
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 itemsIndexed(clips) { i, _ ->
-                    Box(Modifier.size(90.dp, 45.dp).clip(RoundedCornerShape(8.dp)).background(if(i == indiceAtivo) MonstroAccent.copy(0.2f) else DarkGrey).border(2.dp, if(i == indiceAtivo) MonstroAccent else Color.Transparent, RoundedCornerShape(8.dp)).clickable { 
+                    Box(Modifier.size(90.dp, 45.dp).clip(RoundedCornerShape(8.dp)).background(if(i == indiceAtivo) MonstroAccent.copy(0.15f) else DarkGrey).border(2.dp, if(i == indiceAtivo) MonstroAccent else Color.Transparent, RoundedCornerShape(8.dp)).clickable { 
                         indiceAtivo = i
                         exoPlayer.seekToDefaultPosition(i) 
                     }, Alignment.Center) {
-                        Text("V$i", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Text("V$i", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Black)
                     }
                 }
             }
             
             Spacer(Modifier.height(12.dp))
             
-            // CONTROL CENTER
+            // PAINEL DE CONTROLE
             ControlCenter(
                 aba = abaSelecionada,
                 onAbaChange = { abaSelecionada = it },
@@ -275,14 +283,15 @@ fun MonstroIndustrialEditor() {
                 }
             )
 
+            // RENDERIZADOR
             Button(
                 onClick = {
                     exportando = true
                     scope.launch {
                         progressoExport = 0f
-                        while(progressoExport < 1f) { delay(50); progressoExport += 0.02f }
+                        while(progressoExport < 1f) { delay(40); progressoExport += 0.02f }
                         exportando = false
-                        Toast.makeText(context, "RENDERIZADO!", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "CONCLUÍDO!", Toast.LENGTH_SHORT).show()
                     }
                 },
                 modifier = Modifier.fillMaxWidth().height(52.dp),
@@ -311,15 +320,15 @@ fun ControlCenter(aba: Int, onAbaChange: (Int) -> Unit, vfxAtivos: Set<String>, 
             divider = {}
         ) {
             Tab(selected = aba == 0, onClick = { onAbaChange(0) }) { Text("CHAOS", Modifier.padding(10.dp), fontSize = 10.sp, fontWeight = FontWeight.Black) }
-            Tab(selected = aba == 1, onClick = { onAbaChange(1) }) { Text("MOTOR DE COR", Modifier.padding(10.dp), fontSize = 10.sp, fontWeight = FontWeight.Black) }
+            Tab(selected = aba == 1, onClick = { onAbaChange(1) }) { Text("CORES", Modifier.padding(10.dp), fontSize = 10.sp, fontWeight = FontWeight.Black) }
         }
         
-        Box(Modifier.height(180.dp).padding(top = 10.dp)) {
+        Box(Modifier.height(170.dp).padding(top = 10.dp)) {
             if (aba == 0) {
                 Column {
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(2), 
-                        modifier = Modifier.height(120.dp).nestedScroll(remember { object : NestedScrollConnection {} }), 
+                        modifier = Modifier.height(110.dp).nestedScroll(remember { object : NestedScrollConnection {} }), 
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
@@ -341,7 +350,7 @@ fun ControlCenter(aba: Int, onAbaChange: (Int) -> Unit, vfxAtivos: Set<String>, 
                 ) {
                     items(ColorLibrary) { p ->
                         val sel = clips.getOrNull(activeIdx)?.preset == p.id
-                        Box(Modifier.height(48.dp).clip(RoundedCornerShape(8.dp)).background(if(sel) MonstroPink.copy(0.2f) else DarkGrey).border(1.dp, if(sel) MonstroPink else Color.Transparent, RoundedCornerShape(8.dp)).clickable { onPresetClick(p.id) }.padding(8.dp), Alignment.Center) {
+                        Box(Modifier.height(45.dp).clip(RoundedCornerShape(8.dp)).background(if(sel) MonstroPink.copy(0.2f) else DarkGrey).border(1.dp, if(sel) MonstroPink else Color.Transparent, RoundedCornerShape(8.dp)).clickable { onPresetClick(p.id) }.padding(8.dp), Alignment.Center) {
                             Text(p.nome, color = Color.White, fontWeight = FontWeight.Black, fontSize = 10.sp)
                         }
                     }

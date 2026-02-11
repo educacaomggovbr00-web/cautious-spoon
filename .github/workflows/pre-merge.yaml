@@ -1,4 +1,4 @@
-name: Monstro V18 Build Turbo
+name: Monstro V18 - Debug Total
 
 on:
   push:
@@ -10,7 +10,7 @@ on:
 
 jobs:
   gradle:
-    name: Gerar APK Monstro
+    name: Depuração de APK do compilador
     runs-on: ubuntu-latest
     if: ${{ !contains(github.event.head_commit.message, 'ci skip') }}
     
@@ -27,12 +27,13 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Compilar APK Debug
-        # Removi o 'build' e o 'publish' para ser 3x mais rápido e economizar sua bateria
-        run: ./gradlew assembleDebug
+      - name: Compilar com Log de Erros
+        # --stacktrace: Mostra onde o erro nasceu
+        # --info: Dá detalhes de cada tarefa
+        # --continue: Tenta achar o próximo erro mesmo após falhar o primeiro
+        run: ./gradlew assembleDebug --stacktrace --info --continue
 
-      - name: Upload APK do Monstro
-        # Este bloco garante que o link de download apareça no final do processo
+      - name: Faça upload do APK para Monstro
         uses: actions/upload-artifact@v4
         with:
           name: Monstro-V18-APK

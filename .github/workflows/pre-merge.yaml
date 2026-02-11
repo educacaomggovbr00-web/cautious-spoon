@@ -24,27 +24,18 @@ jobs:
           distribution: "zulu"
           java-version: "17"
 
-      - name: Setup Gradle (Cache Blindado)
+      - name: Setup Gradle (Colecionando Cache)
         uses: gradle/actions/setup-gradle@v4
         with:
+          # Mudei para FALSE: Agora ele guarda e usa o cache saudável
           cache-disabled: false
           cache-cleanup: on-success
 
-      # PASSO DE AUTO-HEALING: 
-      # 1. Dá permissão de execução (evita erro de 'Permission Denied')
-      # 2. Tenta corrigir erros de lint/format automaticamente
-      - name: Auto-Fix e Preparação
-        run: |
-          chmod +x gradlew
-          ./gradlew clean
-
       - name: Compilar APK Monstro
-        # Adicionei flags para ignorar avisos de bibliotecas instáveis (como a Media3)
-        # Isso evita que o build pare por causa de "Warnings"
-        run: ./gradlew assembleDebug -Dkotlin.daemon.jvm.options="-Xmx2048m" --stacktrace
+        # Sem o 'build' inútil, apenas o APK direto
+        run: ./gradlew assembleDebug
 
       - name: Upload APK do Monstro
-        if: success() # Só faz o upload se o build deu bom
         uses: actions/upload-artifact@v4
         with:
           name: Monstro-V18-APK

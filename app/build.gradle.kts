@@ -9,6 +9,7 @@ plugins {
 
 android {
     compileSdk = 34
+    // O namespace aqui substitui o package do Manifesto e resolve o erro de 1m 20s
     namespace = "com.ncorti.kotlin.template.app"
 
     defaultConfig {
@@ -24,7 +25,7 @@ android {
         compose = true
     }
 
-    // ADICIONEI ISSO: Para o Lint não travar por causa da Media3
+    // Blindagem para ignorar erros de análise de código e focar no APK
     lint {
         abortOnError = false
         checkReleaseBuilds = false

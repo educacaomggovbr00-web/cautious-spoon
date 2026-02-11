@@ -9,7 +9,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.OptIn
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
@@ -73,10 +72,10 @@ val ChaosEffects = listOf(
 )
 
 val ColorLibrary = listOf(
-    MonstroPreset("none", "Raw State", "Pipeline original"),
-    MonstroPreset("trap", "Trap Lord", "Saturação Turbo"),
-    MonstroPreset("dark", "Dark Energy", "Contraste Industrial"),
-    MonstroPreset("cinema", "Blockbuster", "Orange & Teal")
+    MonstroPreset("none", "Raw State", "Original"),
+    MonstroPreset("trap", "Trap Lord", "Vibrant 220%"),
+    MonstroPreset("dark", "Dark Energy", "Industrial 180%"),
+    MonstroPreset("cinema", "Blockbuster", "Orange/Teal")
 )
 
 @Composable
@@ -85,8 +84,7 @@ fun MonstroTheme(content: @Composable () -> Unit) {
         colorScheme = darkColorScheme(
             primary = MonstroAccent,
             background = MonstroBg,
-            surface = DarkGrey,
-            onSurface = Color.White
+            surface = DarkGrey
         ),
         content = content
     )
@@ -119,7 +117,7 @@ fun MonstroIndustrialEditor() {
     var estaExportando by remember { mutableStateOf(false) }
     var progressoExport by remember { mutableFloatStateOf(0f) }
 
-    // ENGINE DO PLAYER (PROTEÇÃO A30S)
+    // ENGINE DO PLAYER
     val exoPlayer = remember {
         ExoPlayer.Builder(context).build().apply {
             repeatMode = Player.REPEAT_MODE_ONE
@@ -151,17 +149,17 @@ fun MonstroIndustrialEditor() {
 
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { if(it) seletor.launch("video/*") }
 
-    Scaffold(containerColor = MonstroBg) { paddingValues ->
-        Column(Modifier.padding(paddingValues).fillMaxSize().padding(16.dp)) {
+    Scaffold(containerColor = MonstroBg) { padding ->
+        Column(Modifier.padding(padding).fillMaxSize().padding(16.dp)) {
             
-            // HEADER V18 INDUSTRIAL
+            // HEADER V18
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Column {
                     Text("MONSTRO V18", color = Color.White, fontWeight = FontWeight.Black, fontSize = 22.sp)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(6.dp).background(EmeraldTurbo, CircleShape))
                         Spacer(Modifier.width(6.dp))
-                        Text("A30s ENGINE // TURBO BUILD", color = Color.Gray, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                        Text("INDUSTRIAL ENGINE // FIXED BUILD", color = Color.Gray, fontSize = 8.sp, fontWeight = FontWeight.Bold)
                     }
                 }
                 Box(Modifier.size(42.dp).clip(RoundedCornerShape(10.dp)).background(Brush.linearGradient(listOf(MonstroAccent, MonstroPink))), Alignment.Center) {
@@ -171,7 +169,7 @@ fun MonstroIndustrialEditor() {
 
             Spacer(Modifier.height(20.dp))
 
-            // PREVIEW BOX (ZOOM ATIVO POR HARDWARE)
+            // PREVIEW BOX (ZOOM ATIVO)
             Box(
                 Modifier.fillMaxWidth().aspectRatio(16/9f).clip(RoundedCornerShape(16.dp))
                 .background(DarkGrey).border(1.dp, Color.White.copy(0.05f), RoundedCornerShape(16.dp))
@@ -190,9 +188,7 @@ fun MonstroIndustrialEditor() {
                                 setShutterBackgroundColor(android.graphics.Color.TRANSPARENT)
                             }
                         },
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .graphicsLayer(scaleX = masterZoom, scaleY = masterZoom)
+                        modifier = Modifier.fillMaxSize().graphicsLayer(scaleX = masterZoom, scaleY = masterZoom)
                     )
                 }
 
@@ -211,7 +207,7 @@ fun MonstroIndustrialEditor() {
 
             Spacer(Modifier.height(20.dp))
 
-            // TIMELINE SEQUENCE
+            // TIMELINE
             LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 itemsIndexed(clips) { i, _ ->
                     val isAtivo = i == indiceAtivo
@@ -226,7 +222,7 @@ fun MonstroIndustrialEditor() {
 
             Spacer(Modifier.height(20.dp))
 
-            // TAB SYSTEM (FIXED FOR GITHUB BUILD)
+            // TAB SYSTEM (CORREÇÃO DE BUILD)
             TabRow(
                 selectedTabIndex = abaSelecionada,
                 containerColor = Color.Transparent,
@@ -269,10 +265,6 @@ fun MonstroIndustrialEditor() {
                             }
                         }
                         Spacer(Modifier.height(16.dp))
-                        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                            Text("MASTER ZOOM", color = Color.Gray, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                            Text("${(masterZoom * 100).toInt()}%", color = MonstroAccent, fontSize = 9.sp, fontWeight = FontWeight.Black)
-                        }
                         Slider(value = masterZoom, onValueChange = { masterZoom = it }, valueRange = 1f..3f, colors = SliderDefaults.colors(thumbColor = MonstroAccent))
                     }
                 } else {
@@ -294,11 +286,11 @@ fun MonstroIndustrialEditor() {
                 }
             }
 
-            // RENDER ZONE
+            // RODAPÉ
             Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Column {
                     Text("SAFE MODE (A30s)", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                    Text("OPTIMIZED DECODE", color = Color.Gray, fontSize = 8.sp)
+                    Text("30FPS OTIMIZADO", color = Color.Gray, fontSize = 8.sp)
                 }
                 Switch(checked = safeMode, onCheckedChange = { safeMode = it })
             }

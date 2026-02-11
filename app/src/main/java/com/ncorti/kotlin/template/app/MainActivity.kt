@@ -25,7 +25,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
-import androidx.compose.material3.TabRowDefaults.SecondaryIndicator
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -50,7 +49,7 @@ import androidx.media3.ui.PlayerView
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-// --- PALETA INDUSTRIAL (DESIGN TOKENS) ---
+// --- DESIGN TOKENS MONSTRO ---
 val MonstroBg = Color(0xFF020306)
 val MonstroAccent = Color(0xFFa855f7)
 val MonstroPink = Color(0xFFdb2777)
@@ -62,7 +61,6 @@ data class MonstroVfx(val id: String, val nome: String)
 data class MonstroPreset(val id: String, val nome: String, val desc: String)
 data class MonstroClip(val uri: Uri, val preset: String = "none")
 
-// --- BIBLIOTECA DE ATIVOS ---
 val ChaosEffects = listOf(
     MonstroVfx("motionblur", "Motion Blur"),
     MonstroVfx("smartzoom", "Auto Retention"),
@@ -75,10 +73,10 @@ val ChaosEffects = listOf(
 )
 
 val ColorLibrary = listOf(
-    MonstroPreset("none", "Raw State", "Original"),
-    MonstroPreset("trap", "Trap Lord", "Vibrant 220%"),
-    MonstroPreset("dark", "Dark Energy", "Industrial 180%"),
-    MonstroPreset("cinema", "Blockbuster", "Orange/Teal")
+    MonstroPreset("none", "Raw State", "Pipeline original"),
+    MonstroPreset("trap", "Trap Lord", "Saturação Turbo"),
+    MonstroPreset("dark", "Dark Energy", "Contraste Industrial"),
+    MonstroPreset("cinema", "Blockbuster", "Orange & Teal")
 )
 
 @Composable
@@ -138,7 +136,7 @@ fun MonstroIndustrialEditor() {
         onDispose { exoPlayer.release() }
     }
 
-    // HANDLERS DE MÍDIA
+    // HANDLERS
     val permissao = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) 
         Manifest.permission.READ_MEDIA_VIDEO else Manifest.permission.READ_EXTERNAL_STORAGE
 
@@ -153,17 +151,17 @@ fun MonstroIndustrialEditor() {
 
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { if(it) seletor.launch("video/*") }
 
-    Scaffold(containerColor = MonstroBg) { padding ->
-        Column(Modifier.padding(padding).fillMaxSize().padding(16.dp)) {
+    Scaffold(containerColor = MonstroBg) { paddingValues ->
+        Column(Modifier.padding(paddingValues).fillMaxSize().padding(16.dp)) {
             
-            // HEADER V18
+            // HEADER V18 INDUSTRIAL
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Column {
                     Text("MONSTRO V18", color = Color.White, fontWeight = FontWeight.Black, fontSize = 22.sp)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(6.dp).background(EmeraldTurbo, CircleShape))
                         Spacer(Modifier.width(6.dp))
-                        Text("INDUSTRIAL ENGINE // GG BUILD", color = Color.Gray, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                        Text("A30s ENGINE // TURBO BUILD", color = Color.Gray, fontSize = 8.sp, fontWeight = FontWeight.Bold)
                     }
                 }
                 Box(Modifier.size(42.dp).clip(RoundedCornerShape(10.dp)).background(Brush.linearGradient(listOf(MonstroAccent, MonstroPink))), Alignment.Center) {
@@ -173,7 +171,7 @@ fun MonstroIndustrialEditor() {
 
             Spacer(Modifier.height(20.dp))
 
-            // PREVIEW BOX (ZOOM ATIVO)
+            // PREVIEW BOX (ZOOM ATIVO POR HARDWARE)
             Box(
                 Modifier.fillMaxWidth().aspectRatio(16/9f).clip(RoundedCornerShape(16.dp))
                 .background(DarkGrey).border(1.dp, Color.White.copy(0.05f), RoundedCornerShape(16.dp))
@@ -192,7 +190,9 @@ fun MonstroIndustrialEditor() {
                                 setShutterBackgroundColor(android.graphics.Color.TRANSPARENT)
                             }
                         },
-                        modifier = Modifier.fillMaxSize().graphicsLayer(scaleX = masterZoom, scaleY = masterZoom)
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer(scaleX = masterZoom, scaleY = masterZoom)
                     )
                 }
 
@@ -211,7 +211,7 @@ fun MonstroIndustrialEditor() {
 
             Spacer(Modifier.height(20.dp))
 
-            // TIMELINE
+            // TIMELINE SEQUENCE
             LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 itemsIndexed(clips) { i, _ ->
                     val isAtivo = i == indiceAtivo
@@ -226,7 +226,7 @@ fun MonstroIndustrialEditor() {
 
             Spacer(Modifier.height(20.dp))
 
-            // TAB SYSTEM (FIXED FOR GITHUB)
+            // TAB SYSTEM (FIXED FOR GITHUB BUILD)
             TabRow(
                 selectedTabIndex = abaSelecionada,
                 containerColor = Color.Transparent,
@@ -234,7 +234,7 @@ fun MonstroIndustrialEditor() {
                 divider = {},
                 indicator = { tabPositions ->
                     if (abaSelecionada < tabPositions.size) {
-                        SecondaryIndicator(
+                        TabRowDefaults.SecondaryIndicator(
                             modifier = Modifier.tabIndicatorOffset(tabPositions[abaSelecionada]),
                             color = MonstroAccent
                         )
@@ -249,7 +249,7 @@ fun MonstroIndustrialEditor() {
                 }
             }
 
-            // LISTAS DE EFEITOS
+            // VFX & PRESETS AREA
             Box(Modifier.weight(1f).padding(top = 16.dp)) {
                 if (abaSelecionada == 0) {
                     Column(Modifier.verticalScroll(rememberScrollState())) {
@@ -269,6 +269,10 @@ fun MonstroIndustrialEditor() {
                             }
                         }
                         Spacer(Modifier.height(16.dp))
+                        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                            Text("MASTER ZOOM", color = Color.Gray, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                            Text("${(masterZoom * 100).toInt()}%", color = MonstroAccent, fontSize = 9.sp, fontWeight = FontWeight.Black)
+                        }
                         Slider(value = masterZoom, onValueChange = { masterZoom = it }, valueRange = 1f..3f, colors = SliderDefaults.colors(thumbColor = MonstroAccent))
                     }
                 } else {
@@ -304,7 +308,7 @@ fun MonstroIndustrialEditor() {
                     estaExportando = true
                     scope.launch {
                         progressoExport = 0f
-                        while(progressoExport < 1f) { delay(if(safeMode) 70 else 40); progressoExport += 0.02f }
+                        while(progressoExport < 1f) { delay(if(safeMode) 70 else 40); progressoExport += 0.05f }
                         estaExportando = false
                         Toast.makeText(context, "RENDER FINALIZADO!", Toast.LENGTH_SHORT).show()
                     }

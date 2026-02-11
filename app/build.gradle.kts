@@ -7,18 +7,16 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose") 
 }
 
-val APP_VERSION_NAME : String by project
-val APP_VERSION_CODE : String by project
-
 android {
     compileSdk = 34
     namespace = "com.ncorti.kotlin.template.app"
 
     defaultConfig {
-        minSdk = 24 
         applicationId = "com.ncorti.kotlin.template.app"
-        versionCode = APP_VERSION_CODE.toInt()
-        versionName = APP_VERSION_NAME
+        minSdk = 24 
+        targetSdk = 34
+        versionCode = 1 // Fixado para evitar erro de variável
+        versionName = "1.0" // Fixado para evitar erro de variável
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -32,8 +30,9 @@ android {
     }
 
     buildTypes {
-        getByName("release") {
+        release {
             isMinifyEnabled = false
+            isShrinkResources = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }

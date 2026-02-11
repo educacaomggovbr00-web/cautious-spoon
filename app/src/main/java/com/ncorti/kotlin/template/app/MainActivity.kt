@@ -10,6 +10,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.OptIn
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -29,7 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorMatrix // IMPORTADO PARA PRESETS
+import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -47,7 +48,7 @@ import androidx.media3.ui.PlayerView
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-// --- DESIGN TOKENS ---
+// --- DESIGN TOKENS (ESTILO INDUSTRIAL) ---
 val MonstroBg = Color(0xFF020306)
 val MonstroAccent = Color(0xFFa855f7)
 val MonstroPink = Color(0xFFdb2777)
@@ -106,16 +107,7 @@ fun MonstroIndustrialEditor() {
     }
     DisposableEffect(exoPlayer) { onDispose { exoPlayer.release() } }
 
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        uri?.let {
-            clips = clips + MonstroClip(it)
-            exoPlayer.addMediaItem(MediaItem.fromUri(it)); exoPlayer.prepare(); exoPlayer.play()
-        }
-    }
-    val permLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { if(it) launcher.launch("video/*") }
-    val perm = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) Manifest.permission.READ_MEDIA_VIDEO else Manifest.permission.READ_EXTERNAL_STORAGE
-
-    // --- LÓGICA DE CORES DINÂMICA ---
+    // Lógica de Cores Dinâmica (Extraída do segundo código)
     val currentPreset = clips.getOrNull(indiceAtivo)?.preset ?: "none"
     val matizCromatica = remember(currentPreset) {
         when(currentPreset) {
@@ -131,12 +123,21 @@ fun MonstroIndustrialEditor() {
         }
     }
 
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let {
+            clips = clips + MonstroClip(it)
+            exoPlayer.addMediaItem(MediaItem.fromUri(it)); exoPlayer.prepare(); exoPlayer.play()
+        }
+    }
+    val permLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { if(it) launcher.launch("video/*") }
+    val perm = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) Manifest.permission.READ_MEDIA_VIDEO else Manifest.permission.READ_EXTERNAL_STORAGE
+
     Scaffold(containerColor = MonstroBg) { pad ->
         Column(Modifier.padding(pad).fillMaxSize().padding(16.dp)) {
             MonstroHeader()
             Spacer(Modifier.height(16.dp))
             
-            // PREVIEW AGORA COM CORES LIGADAS
+            // Preview com Matriz de Cor e Zoom aplicados
             MonstroPreview(exoPlayer, masterZoom, matizCromatica, estaExportando, progressoExport, clips) { permLauncher.launch(perm) }
             
             Spacer(Modifier.height(16.dp))
@@ -163,7 +164,10 @@ fun MonstroIndustrialEditor() {
                 estaExportando = true
                 scope.launch {
                     progressoExport = 0f
-                    while(progressoExport < 1f) { delay(if(safeMode) 70 else 40); progressoExport += 0.05f }
+                    while(progressoExport < 1f) { 
+                        delay(if(safeMode) 70 else 40) 
+                        progressoExport += 0.05f 
+                    }
                     estaExportando = false
                     Toast.makeText(context, "V18 RENDERIZADO!", Toast.LENGTH_SHORT).show()
                 }
@@ -203,7 +207,7 @@ fun MonstroPreview(player: ExoPlayer, zoom: Float, matrix: ColorMatrix, exportin
                 modifier = Modifier.fillMaxSize().graphicsLayer {
                     scaleX = zoom
                     scaleY = zoom
-                    colorMatrix = matrix // APLICA O FILTRO DE COR AQUI
+                    colorMatrix = matrix 
                 }
             )
         }

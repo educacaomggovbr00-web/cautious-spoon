@@ -6,7 +6,6 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -18,23 +17,18 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            MonstroUI()
-        }
-    }
-}
-
-@Composable
-fun MonstroUI() {
-    Box(
-        modifier = Modifier.fillMaxSize().background(Color(0xFF020306)),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("MONSTRO V18", color = Color(0xFFa855f7), fontSize = 32.sp, fontWeight = FontWeight.Black)
-            Spacer(modifier = Modifier.height(10.dp))
-            Text("SISTEMA PRONTO", color = Color.White, fontSize = 16.sp)
-            Spacer(modifier = Modifier.height(30.dp))
-            CircularProgressIndicator(color = Color(0xFFdb2777))
+            Box(
+                modifier = Modifier.fillMaxSize().background(Color(0xFF020306)),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("MONSTRO V18", color = Color(0xFFa855f7), fontSize = 32.sp, fontWeight = FontWeight.Black)
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text("SISTEMA ATIVO", color = Color.White, fontSize = 16.sp)
+                    Spacer(modifier = Modifier.height(30.dp))
+                    CircularProgressIndicator(color = Color(0xFFdb2777))
+                }
+            }
         }
     }
 }

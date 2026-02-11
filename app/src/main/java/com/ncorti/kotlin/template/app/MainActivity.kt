@@ -10,8 +10,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.OptIn
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -24,8 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.*
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
+import androidx.compose.material3.* // Import genérico para resolver o Indicator
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,14 +45,14 @@ import androidx.media3.ui.PlayerView
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-// --- TOKENS DE DESIGN (V18 INDUSTRIAL) ---
+// --- TOKENS DE DESIGN ---
 val MonstroBg = Color(0xFF020306)
 val MonstroAccent = Color(0xFFa855f7)
 val MonstroPink = Color(0xFFdb2777)
 val EmeraldTurbo = Color(0xFF10b981)
 val DarkGrey = Color(0xFF121214)
 
-// --- MODELOS DE DADOS ---
+// --- DATA MODELS ---
 data class MonstroVfx(val id: String, val nome: String)
 data class MonstroPreset(val id: String, val nome: String, val desc: String)
 data class MonstroClip(val uri: Uri, val preset: String = "none")
@@ -95,13 +92,13 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@OptIn(UnstableApi::class)
+@OptIn(UnstableApi::class, ExperimentalMaterial3Api::class) // Blindagem de API
 @Composable
 fun MonstroIndustrialEditor() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    // ESTADO DO EDITOR
+    // ESTADOS
     var clips by remember { mutableStateOf(emptyList<MonstroClip>()) }
     var indiceAtivo by remember { mutableIntStateOf(0) }
     var abaSelecionada by remember { mutableIntStateOf(0) }
@@ -111,7 +108,7 @@ fun MonstroIndustrialEditor() {
     var estaExportando by remember { mutableStateOf(false) }
     var progressoExport by remember { mutableFloatStateOf(0f) }
 
-    // PLAYER CONFIG (OTIMIZADO PARA SAMSUNG A30s)
+    // PLAYER CONFIG
     val exoPlayer = remember {
         ExoPlayer.Builder(context).build().apply {
             repeatMode = Player.REPEAT_MODE_ONE
@@ -125,7 +122,7 @@ fun MonstroIndustrialEditor() {
 
     DisposableEffect(exoPlayer) { onDispose { exoPlayer.release() } }
 
-    // SELEÇÃO DE ARQUIVO
+    // PERMISSÕES
     val permissao = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
         Manifest.permission.READ_MEDIA_VIDEO else Manifest.permission.READ_EXTERNAL_STORAGE
 
@@ -144,14 +141,15 @@ fun MonstroIndustrialEditor() {
 
     Scaffold(containerColor = MonstroBg) { padding ->
         Column(Modifier.padding(padding).fillMaxSize().padding(16.dp)) {
-            // CABEÇALHO
+            
+            // HEADER
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Column {
                     Text("MONSTRO V18", color = Color.White, fontWeight = FontWeight.Black, fontSize = 22.sp)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(6.dp).background(EmeraldTurbo, CircleShape))
                         Spacer(Modifier.width(6.dp))
-                        Text("13% BATTERY // READY TO BUILD", color = Color.Gray, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                        Text("BUILD BLINDADO // NO ANIMATION", color = Color.Gray, fontSize = 8.sp, fontWeight = FontWeight.Bold)
                     }
                 }
                 Box(Modifier.size(42.dp).clip(RoundedCornerShape(10.dp)).background(Brush.linearGradient(listOf(MonstroAccent, MonstroPink))), Alignment.Center) {
@@ -161,7 +159,7 @@ fun MonstroIndustrialEditor() {
 
             Spacer(Modifier.height(20.dp))
 
-            // ÁREA DE VÍDEO (PREVIEW)
+            // PREVIEW AREA
             Box(Modifier.fillMaxWidth().aspectRatio(16/9f).clip(RoundedCornerShape(16.dp)).background(DarkGrey).border(1.dp, Color.White.copy(0.05f), RoundedCornerShape(16.dp))) {
                 if (clips.isEmpty()) {
                     Column(Modifier.fillMaxSize().clickable { launcher.launch(permissao) }, Arrangement.Center, Alignment.CenterHorizontally) {
@@ -182,13 +180,20 @@ fun MonstroIndustrialEditor() {
                 }
 
                 if (estaExportando) {
-                    RenderOverlay(progressoExport)
+                    // RENDER OVERLAY SIMPLIFICADO (SEM ANIMAÇÃO PARA EVITAR CRASH)
+                    Box(Modifier.fillMaxSize().background(Color.Black.copy(0.85f)), Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("RENDERIZANDO...", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Black)
+                            Spacer(Modifier.height(12.dp))
+                            LinearProgressIndicator(progress = progressoExport, color = MonstroAccent, modifier = Modifier.width(160.dp))
+                        }
+                    }
                 }
             }
 
             Spacer(Modifier.height(20.dp))
 
-            // TIMELINE SEQUENCE
+            // TIMELINE
             Text("TIMELINE SEQUENCE", color = Color.Gray, fontSize = 9.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
             LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -205,7 +210,7 @@ fun MonstroIndustrialEditor() {
 
             Spacer(Modifier.height(20.dp))
 
-            // ABAS DE CONTROLE (CORREÇÃO CRÍTICA DO INDICATOR)
+            // ABAS (FIX DO INDICATOR - VERSÃO COMPATÍVEL UNIVERSAL)
             TabRow(
                 selectedTabIndex = abaSelecionada,
                 containerColor = Color.Transparent,
@@ -213,7 +218,8 @@ fun MonstroIndustrialEditor() {
                 divider = {},
                 indicator = { tabPositions ->
                     if (abaSelecionada < tabPositions.size) {
-                        TabRowDefaults.SecondaryIndicator(
+                        // Usando o Indicator padrão que existe em todas as versões do Material3
+                        TabRowDefaults.Indicator(
                             Modifier.tabIndicatorOffset(tabPositions[abaSelecionada]),
                             color = MonstroAccent
                         )
@@ -228,7 +234,7 @@ fun MonstroIndustrialEditor() {
                 }
             }
 
-            // PAINEL DE CONTROLES (CORREÇÃO DO WEIGHT NO BOX)
+            // PAINEL DE CONTROLES
             Box(Modifier.weight(1f).padding(top = 16.dp)) {
                 if (abaSelecionada == 0) {
                     ChaosPanel(vfxAtivos, masterZoom, { vfxAtivos = it }, { masterZoom = it })
@@ -237,7 +243,7 @@ fun MonstroIndustrialEditor() {
                 }
             }
 
-            // FOOTER E RENDER
+            // FOOTER
             SafeModeBar(safeMode) { safeMode = it }
 
             Button(
@@ -260,23 +266,6 @@ fun MonstroIndustrialEditor() {
             ) {
                 Text("EXPORTAR V18 TURBO", fontWeight = FontWeight.Black, letterSpacing = 1.sp)
             }
-        }
-    }
-}
-
-@Composable
-fun RenderOverlay(progresso: Float) {
-    val transition = rememberInfiniteTransition(label = "render")
-    val alpha by transition.animateFloat(1f, 0.4f, infiniteRepeatable(tween(600), RepeatMode.Reverse), label = "blink")
-    Box(Modifier.fillMaxSize().background(Color.Black.copy(0.85f)), Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(8.dp).clip(CircleShape).background(Color.Red.copy(alpha = alpha)))
-                Spacer(Modifier.width(8.dp))
-                Text("RENDERING MP4...", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Black)
-            }
-            Spacer(Modifier.height(12.dp))
-            LinearProgressIndicator(progress = progresso, color = MonstroAccent, modifier = Modifier.width(160.dp))
         }
     }
 }

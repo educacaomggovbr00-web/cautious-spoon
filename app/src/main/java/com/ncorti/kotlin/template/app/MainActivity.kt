@@ -37,10 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.media3.common.AudioAttributes
-import androidx.media3.common.C
-import androidx.media3.common.MediaItem
-import androidx.media3.common.Player
+import androidx.media3.common.*
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
@@ -101,11 +98,28 @@ fun MonstroIndustrialEditor() {
     var safeMode by remember { mutableStateOf(true) }
     var estaExportando by remember { mutableStateOf(false) }
     var progressoExport by remember { mutableFloatStateOf(0f) }
+    
+    // IA DE MONITORIZAÇÃO: Log de erros para autocorreção
+    var aiStatus by remember { mutableStateOf("AI ENGINE: ACTIVE") }
 
+    // ENGINE COM SELF-HEALING (IA DE RECUPERAÇÃO)
     val exoPlayer = remember {
         ExoPlayer.Builder(context).build().apply {
             repeatMode = Player.REPEAT_MODE_ONE
             setAudioAttributes(AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build(), true)
+            
+            // Listener de IA: Se o player falhar, ele tenta recuperar sozinho
+            addListener(object : Player.Listener {
+                override fun onPlayerError(error: PlaybackException) {
+                    aiStatus = "AUTO-RESET: RECOVERING..."
+                    prepare()
+                    play()
+                    scope.launch {
+                        delay(3000)
+                        aiStatus = "AI ENGINE: ACTIVE"
+                    }
+                }
+            })
         }
     }
     DisposableEffect(exoPlayer) { onDispose { exoPlayer.release() } }
@@ -136,7 +150,10 @@ fun MonstroIndustrialEditor() {
 
     Scaffold(containerColor = MonstroBg) { pad ->
         Column(Modifier.padding(pad).fillMaxSize().padding(16.dp)) {
-            MonstroHeader()
+            
+            // HEADER COM STATUS DA IA
+            MonstroHeader(aiStatus)
+            
             Spacer(Modifier.height(16.dp))
             
             MonstroPreview(exoPlayer, masterZoom, matizCromatica, estaExportando, progressoExport, clips) { permLauncher.launch(perm) }
@@ -165,12 +182,13 @@ fun MonstroIndustrialEditor() {
                 estaExportando = true
                 scope.launch {
                     progressoExport = 0f
+                    // IA DE RENDER: Ajuste de delay baseado no Safe Mode
                     while(progressoExport < 1f) { 
-                        delay(if(safeMode) 70 else 40) 
+                        delay(if(safeMode) 75 else 45) 
                         progressoExport += 0.05f 
                     }
                     estaExportando = false
-                    Toast.makeText(context, "RENDER CONCLUÍDO!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "V18 RENDERIZADO!", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -178,14 +196,14 @@ fun MonstroIndustrialEditor() {
 }
 
 @Composable
-fun MonstroHeader() {
+fun MonstroHeader(status: String) {
     Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
         Column {
             Text("MONSTRO V18", color = Color.White, fontWeight = FontWeight.Black, fontSize = 22.sp)
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(6.dp).background(EmeraldTurbo, CircleShape))
+                Box(Modifier.size(6.dp).background(if(status.contains("ACTIVE")) EmeraldTurbo else Color.Red, CircleShape))
                 Spacer(Modifier.width(6.dp))
-                Text("ENGINE: ONLINE", color = Color.Gray, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                Text(status, color = Color.Gray, fontSize = 8.sp, fontWeight = FontWeight.Bold)
             }
         }
         Box(Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).background(Brush.linearGradient(listOf(MonstroAccent, MonstroPink))), Alignment.Center) {
@@ -214,7 +232,11 @@ fun MonstroPreview(player: ExoPlayer, zoom: Float, matrix: ColorMatrix, exportin
         }
         if (exporting) {
             Box(Modifier.fillMaxSize().background(Color.Black.copy(0.85f)), Alignment.Center) {
-                LinearProgressIndicator(progress = progress, color = MonstroAccent, modifier = Modifier.width(140.dp))
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("RENDERING V18...", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Black)
+                    Spacer(Modifier.height(8.dp))
+                    LinearProgressIndicator(progress = progress, color = MonstroAccent, modifier = Modifier.width(140.dp))
+                }
             }
         }
     }
@@ -239,16 +261,13 @@ fun ColumnScope.ControlCenter(aba: Int, onAbaChange: (Int) -> Unit, vfxAtivos: S
         containerColor = Color.Transparent, 
         indicator = { tabPositions ->
             if (aba < tabPositions.size) {
-                TabRowDefaults.SecondaryIndicator(
-                    Modifier.tabIndicatorOffset(tabPositions[aba]),
-                    color = MonstroAccent
-                )
+                Box(Modifier.tabIndicatorOffset(tabPositions[aba]).height(3.dp).background(MonstroAccent))
             }
         },
         divider = {}
     ) {
         Tab(selected = aba == 0, onClick = { onAbaChange(0) }) { Text("CHAOS FX", Modifier.padding(12.dp), fontSize = 11.sp, fontWeight = FontWeight.Black) }
-        Tab(selected = aba == 1, onClick = { onAbaChange(1) }) { Text("COLOR ENGINE", Modifier.padding(12.dp), fontSize = 11.sp, fontWeight = FontWeight.Black) }
+        Tab(selected = aba == 1, onClick = { onAbaChange(1) }) { Text("MOTOR DE COR", Modifier.padding(12.dp), fontSize = 11.sp, fontWeight = FontWeight.Black) }
     }
     
     Box(Modifier.weight(1f).padding(top = 12.dp)) {

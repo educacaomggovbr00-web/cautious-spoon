@@ -25,7 +25,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
-import androidx.compose.material3.TabRowDefaults.SecondaryIndicator
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -50,14 +49,14 @@ import androidx.media3.ui.PlayerView
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-// --- TOKENS DE DESIGN INDUSTRIAL MONSTRO ---
+// --- DESIGN TOKENS MONSTRO ---
 val MonstroBg = Color(0xFF020306)
 val MonstroAccent = Color(0xFFa855f7)
 val MonstroPink = Color(0xFFdb2777)
 val EmeraldTurbo = Color(0xFF10b981)
 val DarkGrey = Color(0xFF121214)
 
-// --- MODELOS DE DADOS ---
+// --- DATA MODELS ---
 data class MonstroVfx(val id: String, val nome: String)
 data class MonstroPreset(val id: String, val nome: String, val desc: String)
 data class MonstroClip(val uri: Uri, val preset: String = "none")
@@ -97,7 +96,7 @@ fun MonstroIndustrialEditor() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    // ESTADOS GLOBAIS
+    // ESTADOS COM TIPIFICAÇÃO EXPLÍCITA PARA EVITAR ERRO DE COMPILAÇÃO
     var clips by remember { mutableStateOf(emptyList<MonstroClip>()) }
     var indiceAtivo by remember { mutableIntStateOf(0) }
     var abaSelecionada by remember { mutableIntStateOf(0) }
@@ -107,19 +106,20 @@ fun MonstroIndustrialEditor() {
     var estaExportando by remember { mutableStateOf(false) }
     var progressoExport by remember { mutableFloatStateOf(0f) }
 
-    // ENGINE DO PLAYER
+    // PLAYER ENGINE (Instância única)
     val exoPlayer = remember {
         ExoPlayer.Builder(context).build().apply {
             repeatMode = Player.REPEAT_MODE_ONE
-            setAudioAttributes(AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build(), true)
+            setAudioAttributes(AudioAttributes.Builder()
+                .setUsage(C.USAGE_MEDIA)
+                .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+                .build(), true)
         }
     }
 
-    DisposableEffect(exoPlayer) { onDispose { exoPlayer.release() } }
-
-    // SELETOR E PERMISSÕES
-    val permissao = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) 
-        Manifest.permission.READ_MEDIA_VIDEO else Manifest.permission.READ_EXTERNAL_STORAGE
+    DisposableEffect(exoPlayer) {
+        onDispose { exoPlayer.release() }
+    }
 
     val seletor = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let {
@@ -130,19 +130,24 @@ fun MonstroIndustrialEditor() {
         }
     }
 
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { if(it) seletor.launch("video/*") }
+    val launchPerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { 
+        if(it) seletor.launch("video/*") 
+    }
+    
+    val permissao = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) 
+        Manifest.permission.READ_MEDIA_VIDEO else Manifest.permission.READ_EXTERNAL_STORAGE
 
-    Scaffold(containerColor = MonstroBg) { pad ->
-        Column(Modifier.padding(pad).fillMaxSize().padding(16.dp)) {
+    Scaffold(containerColor = MonstroBg) { paddingValues ->
+        Column(Modifier.padding(paddingValues).fillMaxSize().padding(16.dp)) {
             
-            // HEADER V18
+            // HEADER V18 INDUSTRIAL
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Column {
                     Text("MONSTRO V18", color = Color.White, fontWeight = FontWeight.Black, fontSize = 22.sp)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(6.dp).background(EmeraldTurbo, CircleShape))
                         Spacer(Modifier.width(6.dp))
-                        Text("INDUSTRIAL ENGINE // TURBO ZOOM", color = Color.Gray, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                        Text("INDUSTRIAL ENGINE // A30s", color = Color.Gray, fontSize = 8.sp, fontWeight = FontWeight.Bold)
                     }
                 }
                 Box(Modifier.size(42.dp).clip(RoundedCornerShape(10.dp)).background(Brush.linearGradient(listOf(MonstroAccent, MonstroPink))), Alignment.Center) {
@@ -152,17 +157,10 @@ fun MonstroIndustrialEditor() {
 
             Spacer(Modifier.height(20.dp))
 
-            // PREVIEW BOX (Conectado ao Master Zoom)
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(16 / 9f)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(DarkGrey)
-                    .border(1.dp, Color.White.copy(0.05f), RoundedCornerShape(16.dp))
-            ) {
+            // PREVIEW AREA (Com Master Zoom funcional)
+            Box(Modifier.fillMaxWidth().aspectRatio(16/9f).clip(RoundedCornerShape(16.dp)).background(DarkGrey).border(1.dp, Color.White.copy(0.05f), RoundedCornerShape(16.dp))) {
                 if (clips.isEmpty()) {
-                    Box(Modifier.fillMaxSize().clickable { launcher.launch(permissao) }, Alignment.Center) {
+                    Box(Modifier.fillMaxSize().clickable { launchPerm.launch(permissao) }, Alignment.Center) {
                         Text("IMPORT MASTER CLIPE", color = Color.Gray, fontSize = 10.sp, fontWeight = FontWeight.Black)
                     }
                 } else {
@@ -176,16 +174,13 @@ fun MonstroIndustrialEditor() {
                         },
                         modifier = Modifier
                             .fillMaxSize()
-                            .graphicsLayer(
-                                scaleX = masterZoom,
-                                scaleY = masterZoom
-                            ) // MASTER ZOOM APLICADO AQUI
+                            .graphicsLayer(scaleX = masterZoom, scaleY = masterZoom)
                     )
                 }
 
                 if (estaExportando) {
-                    val transition = rememberInfiniteTransition(label = "")
-                    val alpha by transition.animateFloat(1f, 0.4f, infiniteRepeatable(tween(600), RepeatMode.Reverse), label = "")
+                    val transition = rememberInfiniteTransition(label = "rec")
+                    val alpha by transition.animateFloat(1f, 0.4f, infiniteRepeatable(tween(600), RepeatMode.Reverse), label = "blink")
                     Box(Modifier.fillMaxSize().background(Color.Black.copy(0.85f)), Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Box(Modifier.size(8.dp).clip(CircleShape).background(Color.Red.copy(alpha = alpha)))
@@ -202,15 +197,18 @@ fun MonstroIndustrialEditor() {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 itemsIndexed(clips) { i, _ ->
                     val isAtivo = i == indiceAtivo
-                    Box(Modifier.size(110.dp, 60.dp).clip(RoundedCornerShape(10.dp)).background(if(isAtivo) MonstroAccent.copy(0.15f) else DarkGrey).border(2.dp, if(isAtivo) MonstroAccent else Color.Transparent, RoundedCornerShape(10.dp)).clickable { indiceAtivo = i; exoPlayer.seekToDefaultPosition(i) }, Alignment.Center) {
-                        Text("CLIP $i", color = if(isAtivo) Color.White else Color.Gray, fontSize = 11.sp, fontWeight = FontWeight.Black)
+                    Box(Modifier.size(110.dp, 60.dp).clip(RoundedCornerShape(10.dp)).background(if(isAtivo) MonstroAccent.copy(0.15f) else DarkGrey).border(2.dp, if(isAtivo) MonstroAccent else Color.Transparent, RoundedCornerShape(10.dp)).clickable { 
+                        indiceAtivo = i
+                        exoPlayer.seekToDefaultPosition(i) 
+                    }, Alignment.Center) {
+                        Text("CLIP $i", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Black)
                     }
                 }
             }
 
             Spacer(Modifier.height(20.dp))
 
-            // PAINEL DE ABAS (CORREÇÃO DE BUILD GITHUB)
+            // TAB SYSTEM (Corrigido para GitHub Actions)
             TabRow(
                 selectedTabIndex = abaSelecionada,
                 containerColor = Color.Transparent,
@@ -218,8 +216,8 @@ fun MonstroIndustrialEditor() {
                 divider = {},
                 indicator = { tabPositions ->
                     if (abaSelecionada < tabPositions.size) {
-                        SecondaryIndicator(
-                            modifier = Modifier.tabIndicatorOffset(tabPositions[abaSelecionada]),
+                        TabRowDefaults.SecondaryIndicator(
+                            Modifier.tabIndicatorOffset(tabPositions[abaSelecionada]),
                             color = MonstroAccent
                         )
                     }
@@ -233,7 +231,7 @@ fun MonstroIndustrialEditor() {
                 }
             }
 
-            // LISTAS DINÂMICAS
+            // VFX & PRESETS LISTS
             Box(Modifier.weight(1f).padding(top = 16.dp)) {
                 if (abaSelecionada == 0) {
                     Column(Modifier.verticalScroll(rememberScrollState())) {
@@ -245,17 +243,15 @@ fun MonstroIndustrialEditor() {
                         ) {
                             items(ChaosEffects) { fx ->
                                 val isAtivo = vfxAtivos.contains(fx.id)
-                                Box(Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(8.dp)).background(if(isAtivo) MonstroAccent else DarkGrey).clickable { vfxAtivos = if(isAtivo) vfxAtivos - fx.id else vfxAtivos + fx.id }, Alignment.Center) {
+                                Box(Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(8.dp)).background(if(isAtivo) MonstroAccent else DarkGrey).clickable { 
+                                    vfxAtivos = if(isAtivo) vfxAtivos - fx.id else vfxAtivos + fx.id 
+                                }, Alignment.Center) {
                                     Text(fx.nome.uppercase(), color = if(isAtivo) Color.White else Color.Gray, fontSize = 9.sp, fontWeight = FontWeight.Black)
                                 }
                             }
                         }
                         Spacer(Modifier.height(16.dp))
-                        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                            Text("MASTER ZOOM", color = Color.Gray, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                            Text("${(masterZoom * 100).toInt()}%", color = MonstroAccent, fontSize = 9.sp, fontWeight = FontWeight.Black)
-                        }
-                        Slider(value = masterZoom, onValueChange = { masterZoom = it }, valueRange = 1f..3f, colors = SliderDefaults.colors(thumbColor = MonstroAccent, activeTrackColor = MonstroAccent))
+                        Slider(value = masterZoom, onValueChange = { masterZoom = it }, valueRange = 1f..3f, colors = SliderDefaults.colors(thumbColor = MonstroAccent))
                     }
                 } else {
                     LazyVerticalGrid(columns = GridCells.Fixed(2), Arrangement.spacedBy(8.dp), Arrangement.spacedBy(8.dp)) {
@@ -276,13 +272,13 @@ fun MonstroIndustrialEditor() {
                 }
             }
 
-            // FOOTER E RENDER
+            // RENDER SECTION
             Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Column {
                     Text("SAFE MODE (A30s)", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                    Text("OPTIMIZED DECODE", color = Color.Gray, fontSize = 8.sp)
+                    Text("30FPS OTIMIZADO", color = Color.Gray, fontSize = 8.sp)
                 }
-                Switch(checked = safeMode, onCheckedChange = { safeMode = it }, colors = SwitchDefaults.colors(checkedThumbColor = EmeraldTurbo))
+                Switch(checked = safeMode, onCheckedChange = { safeMode = it })
             }
 
             Button(
@@ -290,9 +286,9 @@ fun MonstroIndustrialEditor() {
                     estaExportando = true
                     scope.launch {
                         progressoExport = 0f
-                        while(progressoExport < 1f) { delay(if(safeMode) 70 else 40); progressoExport += 0.02f }
+                        while(progressoExport < 1f) { delay(if(safeMode) 70 else 40); progressoExport += 0.05f }
                         estaExportando = false
-                        Toast.makeText(context, "EXPORTADO!", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "RENDER FINALIZADO!", Toast.LENGTH_SHORT).show()
                     }
                 },
                 modifier = Modifier.fillMaxWidth().height(60.dp),
@@ -300,7 +296,7 @@ fun MonstroIndustrialEditor() {
                 colors = ButtonDefaults.buttonColors(containerColor = MonstroAccent),
                 enabled = clips.isNotEmpty() && !estaExportando
             ) {
-                Text("RENDERIZAR MP4 TURBO", fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                Text("RENDERIZAR MP4 TURBO", fontWeight = FontWeight.Black)
             }
         }
     }

@@ -1,4 +1,4 @@
-name: Monstro V18 - Build Limpo
+name: Monstro V18 - Build Turbo (Cache ON)
 
 on:
   push:
@@ -10,7 +10,7 @@ on:
 
 jobs:
   gradle:
-    name: Gerar APK Sem Sujeira
+    name: Gerar APK em 50s
     runs-on: ubuntu-latest
     if: ${{ !contains(github.event.head_commit.message, 'ci skip') }}
     
@@ -24,16 +24,18 @@ jobs:
           distribution: "zulu"
           java-version: "17"
 
-      - name: Setup Gradle (Reset Total)
+      - name: Setup Gradle (Colecionando Cache)
         uses: gradle/actions/setup-gradle@v4
         with:
-          cache-disabled: true # Garante que nada do cache antigo quebre o build
-          cache-cleanup: always
+          # Mudei para FALSE: Agora ele guarda e usa o cache saudável
+          cache-disabled: false
+          cache-cleanup: on-success
 
       - name: Compilar APK Monstro
-        run: ./gradlew assembleDebug --stacktrace
+        # Sem o 'build' inútil, apenas o APK direto
+        run: ./gradlew assembleDebug
 
-      - name: Upload APK Final
+      - name: Upload APK do Monstro
         uses: actions/upload-artifact@v4
         with:
           name: Monstro-V18-APK

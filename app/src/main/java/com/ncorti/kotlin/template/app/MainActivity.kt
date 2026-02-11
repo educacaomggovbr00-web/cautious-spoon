@@ -22,7 +22,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.* // Import genérico para resolver o Indicator
+import androidx.compose.material3.* // IMPORT GENÉRICO (SEM AMBIGUIDADE)
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset // IMPORT EXPLÍCITO DA EXTENSÃO
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,7 +46,7 @@ import androidx.media3.ui.PlayerView
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-// --- TOKENS DE DESIGN ---
+// --- CONFIGURAÇÃO MONSTRO V18 ---
 val MonstroBg = Color(0xFF020306)
 val MonstroAccent = Color(0xFFa855f7)
 val MonstroPink = Color(0xFFdb2777)
@@ -92,7 +93,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@OptIn(UnstableApi::class, ExperimentalMaterial3Api::class) // Blindagem de API
+@OptIn(UnstableApi::class, ExperimentalMaterial3Api::class) // BLINDAGEM CONTRA VERSÕES VELHAS
 @Composable
 fun MonstroIndustrialEditor() {
     val context = LocalContext.current
@@ -108,7 +109,7 @@ fun MonstroIndustrialEditor() {
     var estaExportando by remember { mutableStateOf(false) }
     var progressoExport by remember { mutableFloatStateOf(0f) }
 
-    // PLAYER CONFIG
+    // PLAYER SETUP
     val exoPlayer = remember {
         ExoPlayer.Builder(context).build().apply {
             repeatMode = Player.REPEAT_MODE_ONE
@@ -122,7 +123,6 @@ fun MonstroIndustrialEditor() {
 
     DisposableEffect(exoPlayer) { onDispose { exoPlayer.release() } }
 
-    // PERMISSÕES
     val permissao = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
         Manifest.permission.READ_MEDIA_VIDEO else Manifest.permission.READ_EXTERNAL_STORAGE
 
@@ -149,7 +149,7 @@ fun MonstroIndustrialEditor() {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(6.dp).background(EmeraldTurbo, CircleShape))
                         Spacer(Modifier.width(6.dp))
-                        Text("BUILD BLINDADO // NO ANIMATION", color = Color.Gray, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                        Text("FINAL BOSS // 5% BATT", color = Color.Gray, fontSize = 8.sp, fontWeight = FontWeight.Bold)
                     }
                 }
                 Box(Modifier.size(42.dp).clip(RoundedCornerShape(10.dp)).background(Brush.linearGradient(listOf(MonstroAccent, MonstroPink))), Alignment.Center) {
@@ -159,7 +159,7 @@ fun MonstroIndustrialEditor() {
 
             Spacer(Modifier.height(20.dp))
 
-            // PREVIEW AREA
+            // PREVIEW
             Box(Modifier.fillMaxWidth().aspectRatio(16/9f).clip(RoundedCornerShape(16.dp)).background(DarkGrey).border(1.dp, Color.White.copy(0.05f), RoundedCornerShape(16.dp))) {
                 if (clips.isEmpty()) {
                     Column(Modifier.fillMaxSize().clickable { launcher.launch(permissao) }, Arrangement.Center, Alignment.CenterHorizontally) {
@@ -167,20 +167,16 @@ fun MonstroIndustrialEditor() {
                         Text("IMPORT MASTER CLIPE", color = Color.Gray, fontSize = 10.sp, fontWeight = FontWeight.Black)
                     }
                 } else {
-                    AndroidView(
-                        factory = { ctx ->
-                            PlayerView(ctx).apply {
-                                player = exoPlayer
-                                useController = false
-                                resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
-                            }
-                        },
-                        modifier = Modifier.fillMaxSize()
-                    )
+                    AndroidView(factory = { ctx ->
+                        PlayerView(ctx).apply {
+                            player = exoPlayer
+                            useController = false
+                            resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                        }
+                    }, modifier = Modifier.fillMaxSize())
                 }
 
                 if (estaExportando) {
-                    // RENDER OVERLAY SIMPLIFICADO (SEM ANIMAÇÃO PARA EVITAR CRASH)
                     Box(Modifier.fillMaxSize().background(Color.Black.copy(0.85f)), Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text("RENDERIZANDO...", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Black)
@@ -210,7 +206,7 @@ fun MonstroIndustrialEditor() {
 
             Spacer(Modifier.height(20.dp))
 
-            // ABAS (FIX DO INDICATOR - VERSÃO COMPATÍVEL UNIVERSAL)
+            // ABAS (A CORREÇÃO DO SÉCULO)
             TabRow(
                 selectedTabIndex = abaSelecionada,
                 containerColor = Color.Transparent,
@@ -218,9 +214,9 @@ fun MonstroIndustrialEditor() {
                 divider = {},
                 indicator = { tabPositions ->
                     if (abaSelecionada < tabPositions.size) {
-                        // Usando o Indicator padrão que existe em todas as versões do Material3
-                        TabRowDefaults.Indicator(
-                            Modifier.tabIndicatorOffset(tabPositions[abaSelecionada]),
+                        // USO EXPLÍCITO DO SECONDARYINDICATOR COM MODIFIER CORRETO
+                        TabRowDefaults.SecondaryIndicator(
+                            modifier = Modifier.tabIndicatorOffset(tabPositions[abaSelecionada]),
                             color = MonstroAccent
                         )
                     }
@@ -234,7 +230,7 @@ fun MonstroIndustrialEditor() {
                 }
             }
 
-            // PAINEL DE CONTROLES
+            // PAINEL DE CONTROLE (SEM ERRO DE WEIGHT)
             Box(Modifier.weight(1f).padding(top = 16.dp)) {
                 if (abaSelecionada == 0) {
                     ChaosPanel(vfxAtivos, masterZoom, { vfxAtivos = it }, { masterZoom = it })

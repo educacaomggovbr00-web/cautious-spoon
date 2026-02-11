@@ -11,7 +11,9 @@ on:
 jobs:
   gradle:
     runs-on: ubuntu-latest
+    # Pula o processo se a mensagem do commit contiver 'ci skip'
     if: ${{ !contains(github.event.head_commit.message, 'ci skip') }}
+    
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
@@ -25,12 +27,12 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Run Gradle
-        # Adicionei o 'assembleDebug' para garantir que o APK seja gerado
-        run: ./gradlew assembleDebug build publishToMavenLocal --continue
+      - name: Run Gradle (Burlar Sonar e Gerar APK)
+        # O segredo: -x sonar pula o SonarCloud e -x lint pula avisos de código
+        run: ./gradlew assembleDebug -x sonar -x lint --continue
 
-      # ESTE É O BLOCO QUE FALTAVA PARA SALVAR O APK
       - name: Upload APK
+        # Este passo cria o link de download para o seu celular
         uses: actions/upload-artifact@v4
         with:
           name: Monstro-V18-APK

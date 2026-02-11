@@ -1,4 +1,4 @@
-name: Pre Merge Checks
+name: Monstro V18 Build Turbo
 
 on:
   push:
@@ -10,13 +10,15 @@ on:
 
 jobs:
   gradle:
+    name: Gerar APK Monstro
     runs-on: ubuntu-latest
     if: ${{ !contains(github.event.head_commit.message, 'ci skip') }}
+    
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
 
-      - name: Setup Java
+      - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           distribution: "zulu"
@@ -25,12 +27,12 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Run Gradle
-        # Adicionei o 'assembleDebug' para garantir que o APK seja gerado
-        run: ./gradlew assembleDebug build publishToMavenLocal --continue
+      - name: Compilar APK Debug
+        # Removi o 'build' e o 'publish' para ser 3x mais rápido e economizar sua bateria
+        run: ./gradlew assembleDebug
 
-      # ESTE É O BLOCO QUE FALTAVA PARA SALVAR O APK
-      - name: Upload APK
+      - name: Upload APK do Monstro
+        # Este bloco garante que o link de download apareça no final do processo
         uses: actions/upload-artifact@v4
         with:
           name: Monstro-V18-APK

@@ -42,10 +42,9 @@ import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-// IMPORT ESSENCIAL: Garante a compilação do RenderEffect no Compose
 import androidx.compose.ui.graphics.asComposeRenderEffect
 
-// --- TOKENS DE DESIGN (INDUSTRIAL MONSTRO) ---
+// --- DESIGN SYSTEM (INDUSTRIAL MONSTRO) ---
 val MonstroBg = Color(0xFF020306)
 val MonstroAccent = Color(0xFFa855f7)
 val MonstroPink = Color(0xFFdb2777)
@@ -85,7 +84,7 @@ fun MonstroIndustrialEditor() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     
-    // ESTADOS DO MOTOR GRÁFICO
+    // ESTADOS DO MOTOR
     var clips by remember { mutableStateOf(emptyList<MonstroClip>()) }
     var indiceAtivo by remember { mutableIntStateOf(0) }
     var abaSelecionada by remember { mutableIntStateOf(0) }
@@ -93,11 +92,9 @@ fun MonstroIndustrialEditor() {
     var masterZoom by remember { mutableFloatStateOf(1f) }
     var exportando by remember { mutableStateOf(false) }
     var progressoExport by remember { mutableFloatStateOf(0f) }
-    
-    // STATUS DA IA DE MONITORAMENTO
     var aiStatus by remember { mutableStateOf("AI ENGINE: ACTIVE") }
 
-    // MOTOR EXOPLAYER COM SELF-HEALING (USANDO APPLICATION CONTEXT PARA PREVENIR LEAKS)
+    // MOTOR EXOPLAYER
     val exoPlayer = remember(context) {
         ExoPlayer.Builder(context.applicationContext).build().apply {
             repeatMode = Player.REPEAT_MODE_ONE
@@ -129,15 +126,13 @@ fun MonstroIndustrialEditor() {
         }
     }
     
-    // SUPRESSÃO DE DEPRECATION PARA LINT DO CI (ANDROID 13+)
-    @Suppress("DEPRECATION")
     val perm = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) Manifest.permission.READ_MEDIA_VIDEO else Manifest.permission.READ_EXTERNAL_STORAGE
     val permLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { if(it) launcher.launch("video/*") }
 
     Scaffold(containerColor = MonstroBg) { pad ->
         Column(Modifier.padding(pad).fillMaxSize().padding(16.dp)) {
             
-            // HEADER COM TELEMETRIA DA IA
+            // HEADER TELEMETRIA
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Column {
                     Text("MONSTRO V18.2", color = Color.White, fontWeight = FontWeight.Black, fontSize = 22.sp)
@@ -147,41 +142,42 @@ fun MonstroIndustrialEditor() {
                         Text(aiStatus, color = Color.Gray, fontSize = 8.sp, fontWeight = FontWeight.Bold)
                     }
                 }
-                Box(Modifier.size(36.dp).clip(RoundedCornerShape(8.dp)).background(MonstroAccent), Alignment.Center) {
+                Box(Modifier.size(36.dp).clip(RoundedCornerShape(8.dp)).background(MonstroAccent).clickable { /* Configs */ }, Alignment.Center) {
                     Icon(Icons.Default.PlayArrow, null, tint = Color.White)
                 }
             }
             
             Spacer(Modifier.height(16.dp))
             
-            // PREVIEW BOX COM 'KEY' PARA EVITAR FLICKER E RENDER EFFECT PARA FILTROS
+            // PREVIEW ENGINE
             Box(Modifier.fillMaxWidth().aspectRatio(16/9f).clip(RoundedCornerShape(12.dp)).background(DarkGrey).border(0.5.dp, Color.White.copy(0.1f), RoundedCornerShape(12.dp))) {
                 if (clips.isEmpty()) {
                     Box(Modifier.fillMaxSize().clickable { permLauncher.launch(perm) }, Alignment.Center) {
                         Text("IMPORT MASTER", color = Color.Gray, fontSize = 10.sp, fontWeight = FontWeight.Black)
                     }
                 } else {
-                    // ÂNCORA DE RECOMPOSIÇÃO: O PlayerView só reinicia se a URI mudar
-                    AndroidView(
-                        key = clips.getOrNull(indiceAtivo)?.uri,
-                        factory = { ctx -> 
-                            PlayerView(ctx).apply { 
-                                this.player = exoPlayer
-                                useController = false
-                                resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT 
-                            } 
-                        },
-                        modifier = Modifier.fillMaxSize().graphicsLayer {
-                            scaleX = masterZoom; scaleY = masterZoom
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                // BLINDAGEM: clone() evita bugs de mutação de matriz em tempo real
-                                val androidMatrix = android.graphics.ColorMatrix(matiz.values.clone())
-                                renderEffect = android.graphics.RenderEffect.createColorFilterEffect(
-                                    android.graphics.ColorMatrixColorFilter(androidMatrix)
-                                ).asComposeRenderEffect()
+                    // CORREÇÃO APLICADA: key() envolvendo o AndroidView
+                    key(clips.getOrNull(indiceAtivo)?.uri) {
+                        AndroidView(
+                            factory = { ctx -> 
+                                PlayerView(ctx).apply { 
+                                    this.player = exoPlayer
+                                    useController = false
+                                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT 
+                                } 
+                            },
+                            modifier = Modifier.fillMaxSize().graphicsLayer {
+                                scaleX = masterZoom
+                                scaleY = masterZoom
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                    val androidMatrix = android.graphics.ColorMatrix(matiz.values.clone())
+                                    renderEffect = android.graphics.RenderEffect.createColorFilterEffect(
+                                        android.graphics.ColorMatrixColorFilter(androidMatrix)
+                                    ).asComposeRenderEffect()
+                                }
                             }
-                        }
-                    )
+                        )
+                    }
                 }
                 if (exportando) {
                     Box(Modifier.fillMaxSize().background(Color.Black.copy(0.8f)), Alignment.Center) {
@@ -192,7 +188,7 @@ fun MonstroIndustrialEditor() {
             
             Spacer(Modifier.height(12.dp))
             
-            // TIMELINE REATIVA
+            // TIMELINE
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 itemsIndexed(clips) { i, _ ->
                     Box(Modifier.size(95.dp, 50.dp).clip(RoundedCornerShape(8.dp)).background(if(i == indiceAtivo) MonstroAccent.copy(0.15f) else DarkGrey).border(2.dp, if(i == indiceAtivo) MonstroAccent else Color.Transparent, RoundedCornerShape(8.dp)).clickable { 
@@ -206,7 +202,7 @@ fun MonstroIndustrialEditor() {
             
             Spacer(Modifier.height(12.dp))
             
-            // PAINEL DE CONTROLE (CONTROL CENTER)
+            // CONTROL CENTER
             ControlCenter(
                 aba = abaSelecionada,
                 onAbaChange = { abaSelecionada = it },
@@ -223,7 +219,7 @@ fun MonstroIndustrialEditor() {
                 }
             )
 
-            // FOOTER COM RENDERIZADOR TURBO
+            // FOOTER RENDER
             Button(
                 onClick = {
                     exportando = true
@@ -266,7 +262,6 @@ fun ControlCenter(aba: Int, onAbaChange: (Int) -> Unit, vfxAtivos: Set<String>, 
         Box(Modifier.height(160.dp).padding(top = 10.dp)) {
             if (aba == 0) {
                 Column {
-                    // nestedScroll silencia warnings de conflito de rolagem
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(2), 
                         modifier = Modifier.height(110.dp).nestedScroll(remember { object : NestedScrollConnection {} }), 

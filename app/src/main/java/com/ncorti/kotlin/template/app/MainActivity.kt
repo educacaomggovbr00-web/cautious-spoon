@@ -9,6 +9,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.OptIn
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -81,7 +82,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@androidx.annotation.OptIn(UnstableApi::class)
+@OptIn(UnstableApi::class)
 @Composable
 fun MonstroIndustrialEditor() {
     val context = LocalContext.current
@@ -115,31 +116,27 @@ fun MonstroIndustrialEditor() {
 
     Scaffold(containerColor = MonstroBg) { pad ->
         Column(Modifier.padding(pad).fillMaxSize().padding(16.dp)) {
-            MonstroHeader()
+            IndustrialHeader()
             Spacer(Modifier.height(16.dp))
-            MonstroPreview(exoPlayer, masterZoom, estaExportando, progressoExport, clips) { launcher.launch(perm) }
+            PreviewContainer(exoPlayer, masterZoom, estaExportando, progressoExport, clips) { launcher.launch(perm) }
             Spacer(Modifier.height(16.dp))
-            MonstroTimeline(clips, indiceAtivo) { i -> indiceAtivo = i; exoPlayer.seekToDefaultPosition(i) }
+            TimelineStrip(clips, indiceAtivo) { i -> indiceAtivo = i; exoPlayer.seekToDefaultPosition(i) }
             Spacer(Modifier.height(16.dp))
             
-            // ABAS E PAINEIS MODULARIZADOS
-            MonstroTabSystem(abaSelecionada) { abaSelecionada = it }
-            
-            Box(Modifier.weight(1f).padding(top = 12.dp)) {
-                if (abaSelecionada == 0) {
-                    ChaosPanel(vfxAtivos, { id -> vfxAtivos = if(vfxAtivos.contains(id)) vfxAtivos - id else vfxAtivos + id }, masterZoom, { masterZoom = it })
-                } else {
-                    ColorPanel(clips, indiceAtivo) { p -> if(indiceAtivo in clips.indices) clips = clips.toMutableList().apply { this[indiceAtivo] = this[indiceAtivo].copy(preset = p) } }
-                }
-            }
+            ControlCenter(
+                abaSelecionada, { abaSelecionada = it },
+                vfxAtivos, { id -> vfxAtivos = if(vfxAtivos.contains(id)) vfxAtivos - id else vfxAtivos + id },
+                masterZoom, { masterZoom = it },
+                clips, indiceAtivo, { p -> if(indiceAtivo in clips.indices) clips = clips.toMutableList().apply { this[indiceAtivo] = this[indiceAtivo].copy(preset = p) } }
+            )
 
-            MonstroFooter(safeMode, { safeMode = it }, clips.isNotEmpty(), estaExportando) {
+            RenderAction(safeMode, { safeMode = it }, clips.isNotEmpty(), estaExportando) {
                 estaExportando = true
                 scope.launch {
                     progressoExport = 0f
                     while(progressoExport < 1f) { delay(if(safeMode) 75 else 40); progressoExport += 0.05f }
                     estaExportando = false
-                    Toast.makeText(context, "RENDERIZADO!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "RENDER CONCLUÍDO!", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -147,7 +144,7 @@ fun MonstroIndustrialEditor() {
 }
 
 @Composable
-fun MonstroHeader() {
+fun IndustrialHeader() {
     Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
         Column {
             Text("MONSTRO V18", color = Color.White, fontWeight = FontWeight.Black, fontSize = 22.sp)
@@ -161,7 +158,7 @@ fun MonstroHeader() {
 
 @UnstableApi
 @Composable
-fun MonstroPreview(player: ExoPlayer, zoom: Float, exporting: Boolean, progress: Float, clips: List<MonstroClip>, onImport: () -> Unit) {
+fun PreviewContainer(player: ExoPlayer, zoom: Float, exporting: Boolean, progress: Float, clips: List<MonstroClip>, onImport: () -> Unit) {
     Box(Modifier.fillMaxWidth().aspectRatio(16/9f).clip(RoundedCornerShape(16.dp)).background(DarkGrey).border(1.dp, Color.White.copy(0.05f), RoundedCornerShape(16.dp))) {
         if (clips.isEmpty()) {
             Box(Modifier.fillMaxSize().clickable { onImport() }, Alignment.Center) {
@@ -169,7 +166,7 @@ fun MonstroPreview(player: ExoPlayer, zoom: Float, exporting: Boolean, progress:
             }
         } else {
             AndroidView(
-                factory = { PlayerView(it).apply { this.player = player; useController = false; resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT } },
+                factory = { ctx -> PlayerView(ctx).apply { this.player = player; useController = false; resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT } },
                 modifier = Modifier.fillMaxSize().graphicsLayer(scaleX = zoom, scaleY = zoom)
             )
         }
@@ -182,7 +179,7 @@ fun MonstroPreview(player: ExoPlayer, zoom: Float, exporting: Boolean, progress:
 }
 
 @Composable
-fun MonstroTimeline(clips: List<MonstroClip>, active: Int, onSelect: (Int) -> Unit) {
+fun TimelineStrip(clips: List<MonstroClip>, active: Int, onSelect: (Int) -> Unit) {
     LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         itemsIndexed(clips) { i, _ ->
             Box(Modifier.size(100.dp, 55.dp).clip(RoundedCornerShape(8.dp)).background(if(i == active) MonstroAccent.copy(0.15f) else DarkGrey).border(2.dp, if(i == active) MonstroAccent else Color.Transparent, RoundedCornerShape(8.dp)).clickable { onSelect(i) }, Alignment.Center) {
@@ -193,14 +190,30 @@ fun MonstroTimeline(clips: List<MonstroClip>, active: Int, onSelect: (Int) -> Un
 }
 
 @Composable
-fun MonstroTabSystem(aba: Int, onAbaChange: (Int) -> Unit) {
-    TabRow(selectedTabIndex = aba, containerColor = Color.Transparent, indicator = { positions ->
-        if (aba < positions.size) {
-            TabRowDefaults.SecondaryIndicator(Modifier.tabIndicatorOffset(positions[aba]), color = MonstroAccent)
+fun ControlCenter(aba: Int, onAbaChange: (Int) -> Unit, vfx: Set<String>, onVfx: (String) -> Unit, zoom: Float, onZoom: (Float) -> Unit, clips: List<MonstroClip>, activeIdx: Int, onPreset: (String) -> Unit) {
+    TabRow(
+        selectedTabIndex = aba, 
+        containerColor = Color.Transparent, 
+        indicator = { tabPositions ->
+            if (aba < tabPositions.size) {
+                TabRowDefaults.SecondaryIndicator(
+                    modifier = Modifier.tabIndicatorOffset(tabPositions[aba]),
+                    color = MonstroAccent
+                )
+            }
+        },
+        divider = {}
+    ) {
+        Tab(selected = aba == 0, onClick = { onAbaChange(0) }) { Text("CHAOS FX", Modifier.padding(12.dp), fontSize = 11.sp, fontWeight = FontWeight.Black) }
+        Tab(selected = aba == 1, onClick = { onAbaChange(1) }) { Text("COLOR ENGINE", Modifier.padding(12.dp), fontSize = 11.sp, fontWeight = FontWeight.Black) }
+    }
+    
+    Box(Modifier.weight(1f).padding(top = 12.dp)) {
+        if (aba == 0) {
+            ChaosPanel(vfx, onVfx, zoom, onZoom)
+        } else {
+            ColorPanel(clips, activeIdx, onPreset)
         }
-    }) {
-        Tab(selected = aba == 0, onClick = { onAbaChange(0) }) { Text("CHAOS FX", Modifier.padding(12.dp), fontSize = 10.sp, fontWeight = FontWeight.Black) }
-        Tab(selected = aba == 1, onClick = { onAbaChange(1) }) { Text("COLOR ENGINE", Modifier.padding(12.dp), fontSize = 10.sp, fontWeight = FontWeight.Black) }
     }
 }
 
@@ -245,7 +258,7 @@ fun ColorPanel(clips: List<MonstroClip>, active: Int, onPreset: (String) -> Unit
 }
 
 @Composable
-fun MonstroFooter(safe: Boolean, onSafe: (Boolean) -> Unit, hasClips: Boolean, exporting: Boolean, onRender: () -> Unit) {
+fun RenderAction(safe: Boolean, onSafe: (Boolean) -> Unit, hasClips: Boolean, exporting: Boolean, onRender: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
         Column { Text("SAFE MODE", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold); Text("A30s OPTIMIZED", color = Color.Gray, fontSize = 8.sp) }
         Switch(checked = safe, onCheckedChange = onSafe)

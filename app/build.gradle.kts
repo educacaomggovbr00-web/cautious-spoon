@@ -12,8 +12,6 @@ val APP_VERSION_CODE : String by project
 
 android {
     compileSdk = 34
-
-    // ENDEREÇO FIXO PARA CURAR O CRASH
     namespace = "com.ncorti.kotlin.template.app"
 
     defaultConfig {
@@ -47,10 +45,6 @@ tasks.withType<KotlinCompile>().configureEach {
     }
 }
 
-tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
-    ignoreFailures = true
-}
-
 dependencies {
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
@@ -58,8 +52,6 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.8.2")
     implementation(platform("androidx.compose:compose-bom:2024.01.00"))
     implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.ui:ui-graphics")
-    implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
     
     // PLAYER DE VÍDEO DO MONSTRO

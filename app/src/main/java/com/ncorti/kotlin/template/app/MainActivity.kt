@@ -151,7 +151,7 @@ fun MonstroIndustrialEditor() {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(6.dp).background(EmeraldTurbo, CircleShape))
                         Spacer(Modifier.width(6.dp))
-                        Text("BITRATE OTIMIZADO // 13% BATT", color = Color.Gray, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                        Text("13% BATTERY // READY TO BUILD", color = Color.Gray, fontSize = 8.sp, fontWeight = FontWeight.Bold)
                     }
                 }
                 Box(Modifier.size(42.dp).clip(RoundedCornerShape(10.dp)).background(Brush.linearGradient(listOf(MonstroAccent, MonstroPink))), Alignment.Center) {
@@ -205,7 +205,7 @@ fun MonstroIndustrialEditor() {
 
             Spacer(Modifier.height(20.dp))
 
-            // ABAS DE CONTROLE (CORREÇÃO DO INDICATOR GHOST)
+            // ABAS DE CONTROLE (CORREÇÃO CRÍTICA DO INDICATOR)
             TabRow(
                 selectedTabIndex = abaSelecionada,
                 containerColor = Color.Transparent,
@@ -213,7 +213,7 @@ fun MonstroIndustrialEditor() {
                 divider = {},
                 indicator = { tabPositions ->
                     if (abaSelecionada < tabPositions.size) {
-                        TabRowDefaults.Indicator(
+                        TabRowDefaults.SecondaryIndicator(
                             Modifier.tabIndicatorOffset(tabPositions[abaSelecionada]),
                             color = MonstroAccent
                         )
@@ -228,7 +228,7 @@ fun MonstroIndustrialEditor() {
                 }
             }
 
-            // PAINEL DE CONTROLES (FIX SCOPE WEIGHT)
+            // PAINEL DE CONTROLES (CORREÇÃO DO WEIGHT NO BOX)
             Box(Modifier.weight(1f).padding(top = 16.dp)) {
                 if (abaSelecionada == 0) {
                     ChaosPanel(vfxAtivos, masterZoom, { vfxAtivos = it }, { masterZoom = it })
@@ -335,4 +335,5 @@ fun SafeModeBar(safeMode: Boolean, onToggle: (Boolean) -> Unit) {
         Switch(checked = safeMode, onCheckedChange = onToggle, colors = SwitchDefaults.colors(checkedThumbColor = EmeraldTurbo))
     }
 }
+
 

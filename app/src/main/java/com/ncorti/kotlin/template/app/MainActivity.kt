@@ -34,7 +34,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 
-// --- RESOLUÇÃO DEFINITIVA DE AMBIGUIDADE (ALIASES) ---
+// --- RESOLUÇÃO DE CONFLITOS MEDIA3 (ALIASES) ---
 import androidx.media3.common.ColorMatrix as Media3ColorMatrix
 import androidx.media3.common.Effect
 import androidx.media3.common.Effects
@@ -56,7 +56,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.io.File
 
-// --- MOTOR DE DESIGN ---
 object MonstroTheme {
     val Bg = Color(0xFF020306)
     val Accent = Color(0xFFa855f7)
@@ -70,7 +69,6 @@ data class MonstroClip(
     val saturation: Float = 1.0f
 )
 
-// --- VIEWMODEL BLINDADA PARA O BUILD ---
 class EditorViewModel : ViewModel() {
     private val _clips = MutableStateFlow<List<MonstroClip>>(emptyList())
     val clips = _clips.asStateFlow()
@@ -99,7 +97,7 @@ class EditorViewModel : ViewModel() {
         if (!outputDir.exists()) outputDir.mkdirs()
         val outputFile = File(outputDir, "MONSTRO_${System.currentTimeMillis()}.mp4")
 
-        // 1. Criar o Transformer com o Listener usando Media3Composition (Alias)
+        // Builder do Transformer
         val transformer = Transformer.Builder(context)
             .setVideoMimeType(MimeTypes.VIDEO_H264)
             .setAudioMimeType(MimeTypes.AUDIO_AAC)
@@ -115,13 +113,13 @@ class EditorViewModel : ViewModel() {
             })
             .build()
 
-        // 2. Construir a sequência de clips usando tipos explícitos
+        // Mapeamento dos efeitos para a GPU
         val editedItems = _clips.value.map { clip ->
             val videoEffects = mutableListOf<Effect>()
-            
-            // Usando Media3ColorMatrix para evitar conflito com Compose Graphics
             val matrix = Media3ColorMatrix()
             matrix.setToSaturation(clip.saturation)
+            
+            // createMatrix é um método estático do RgbFilter
             videoEffects.add(RgbFilter.createMatrix(matrix.values))
 
             EditedMediaItem.Builder(MediaItem.fromUri(clip.uri))
@@ -129,7 +127,7 @@ class EditorViewModel : ViewModel() {
                 .build()
         }
 
-        // 3. Composição final usando o alias para não confundir o compilador
+        // Composição final usando Media3Composition para evitar erro de ambiguidade
         val composition = Media3Composition.Builder(listOf(EditedMediaSequence(editedItems)))
             .build()
 
@@ -137,11 +135,11 @@ class EditorViewModel : ViewModel() {
             transformer.start(composition, outputFile.path)
         } catch (e: Exception) {
             _isExporting.value = false
-            onError(e.message ?: "Falha ao iniciar render")
+            onError(e.message ?: "Erro ao iniciar")
             return
         }
 
-        // 4. Monitoramento do progresso real
+        // Monitor de Progresso
         CoroutineScope(Dispatchers.Main).launch {
             val progressHolder = ProgressHolder()
             while (_isExporting.value) {
@@ -199,13 +197,12 @@ fun RealRenderEditor(viewModel: EditorViewModel = viewModel()) {
     ) { pad ->
         Column(Modifier.padding(pad).fillMaxSize()) {
             
-            // PREVIEW AREA
             Box(Modifier.fillMaxWidth().weight(1f).background(Color.Black)) {
                 if (clips.isEmpty()) {
                     Box(Modifier.fillMaxSize().clickable { permLauncher.launch(perm) }, Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(Icons.Default.AddAPhoto, null, tint = Color.Gray, modifier = Modifier.size(48.dp))
-                            Text("IMPORTAR CLIPS", color = Color.White, fontWeight = FontWeight.Black)
+                            Icon(Icons.Default.VideoCall, null, tint = Color.Gray, modifier = Modifier.size(64.dp))
+                            Text("IMPORTAR MEDIA", color = Color.White, fontWeight = FontWeight.Black)
                         }
                     }
                 } else {
@@ -215,20 +212,18 @@ fun RealRenderEditor(viewModel: EditorViewModel = viewModel()) {
                     )
                 }
 
-                // EXPORT OVERLAY
                 if (isExporting) {
                     Box(Modifier.fillMaxSize().background(Color.Black.copy(0.9f)), Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             CircularProgressIndicator(progress = exportProgress, color = MonstroTheme.Pink, strokeWidth = 8.dp)
                             Spacer(Modifier.height(16.dp))
-                            Text("CONSTRUINDO MP4...", color = Color.White, fontWeight = FontWeight.Bold)
-                            Text("${(exportProgress * 100).toInt()}%", color = MonstroTheme.Pink, fontSize = 24.sp, fontWeight = FontWeight.Black)
+                            Text("RENDERIZANDO MP4...", color = Color.White, fontWeight = FontWeight.Bold)
+                            Text("${(exportProgress * 100).toInt()}%", color = MonstroTheme.Pink, fontSize = 32.sp, fontWeight = FontWeight.Black)
                         }
                     }
                 }
             }
 
-            // TIMELINE
             LazyRow(
                 Modifier.fillMaxWidth().height(110.dp).background(MonstroTheme.Surface),
                 verticalAlignment = Alignment.CenterVertically,
@@ -236,33 +231,32 @@ fun RealRenderEditor(viewModel: EditorViewModel = viewModel()) {
             ) {
                 itemsIndexed(clips) { i, _ ->
                     Box(
-                        Modifier.width(100.dp).height(60.dp).padding(4.dp)
+                        Modifier.width(110.dp).height(70.dp).padding(4.dp)
                             .clip(RoundedCornerShape(8.dp))
                             .background(if(i == activeIndex) MonstroTheme.Accent else Color.DarkGray)
                             .clickable { viewModel.setActiveIndex(i); exoPlayer.seekTo(i, 0L) },
                         Alignment.Center
                     ) {
-                        Text("CLIP $i", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text("CLIP ${i+1}", color = Color.White, fontWeight = FontWeight.Bold)
                     }
                 }
             }
 
-            // ACTION BUTTON
             Button(
                 onClick = {
                     viewModel.renderVideo(context, 
-                        onComplete = { Toast.makeText(context, "Vídeo Salvo em Movies/Monstro", Toast.LENGTH_LONG).show() },
+                        onComplete = { Toast.makeText(context, "Salvo: ${it.name}", Toast.LENGTH_LONG).show() },
                         onError = { Toast.makeText(context, "Erro: $it", Toast.LENGTH_SHORT).show() }
                     )
                 },
                 modifier = Modifier.fillMaxWidth().height(80.dp).padding(16.dp),
                 enabled = clips.isNotEmpty() && !isExporting,
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MonstroTheme.Pink)
             ) {
-                Icon(Icons.Default.MovieFilter, null)
+                Icon(Icons.Default.Download, null)
                 Spacer(Modifier.width(8.dp))
-                Text("EXPORTAR V19 FINAL", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
+                Text("EXPORTAR V19 MONSTRO", fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
             }
         }
     }
@@ -272,9 +266,9 @@ fun RealRenderEditor(viewModel: EditorViewModel = viewModel()) {
 fun BottomControls() {
     Surface(Modifier.fillMaxWidth().height(60.dp), color = Color.Black) {
         Row(Modifier.fillMaxSize(), Arrangement.SpaceEvenly, Alignment.CenterVertically) {
-            IconButton(onClick = {}) { Icon(Icons.Default.Tune, null, tint = Color.White) }
-            IconButton(onClick = {}) { Icon(Icons.Default.Speed, null, tint = Color.White) }
             IconButton(onClick = {}) { Icon(Icons.Default.AutoAwesome, null, tint = Color.White) }
+            IconButton(onClick = {}) { Icon(Icons.Default.SlowMotionVideo, null, tint = Color.White) }
+            IconButton(onClick = {}) { Icon(Icons.Default.Palette, null, tint = Color.White) }
         }
     }
 }

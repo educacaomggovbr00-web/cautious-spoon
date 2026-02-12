@@ -34,28 +34,17 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 
-// --- RESOLUÇÃO DE CONFLITOS MEDIA3 (ALIASES) ---
-import androidx.media3.common.ColorMatrix as Media3ColorMatrix
-import androidx.media3.common.Effect
-import androidx.media3.common.Effects
+// Imports de UI e Base (Estes não costumam dar erro)
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
-import androidx.media3.effect.RgbFilter
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.transformer.Composition as Media3Composition
-import androidx.media3.transformer.EditedMediaItem
-import androidx.media3.transformer.EditedMediaSequence
-import androidx.media3.transformer.ExportException
-import androidx.media3.transformer.ExportResult
-import androidx.media3.transformer.ProgressHolder
-import androidx.media3.transformer.Transformer
 import androidx.media3.ui.PlayerView
-
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.io.File
 
+// --- MOTOR DE DESIGN ---
 object MonstroTheme {
     val Bg = Color(0xFF020306)
     val Accent = Color(0xFFa855f7)
@@ -69,6 +58,7 @@ data class MonstroClip(
     val saturation: Float = 1.0f
 )
 
+// --- VIEWMODEL BLINDADA (V19 FINAL - SEM IMPORTS CONFLITANTES) ---
 class EditorViewModel : ViewModel() {
     private val _clips = MutableStateFlow<List<MonstroClip>>(emptyList())
     val clips = _clips.asStateFlow()
@@ -82,12 +72,10 @@ class EditorViewModel : ViewModel() {
     private val _isExporting = MutableStateFlow(false)
     val isExporting = _isExporting.asStateFlow()
 
-    fun addClip(uri: Uri) {
-        _clips.value = _clips.value + MonstroClip(uri)
-    }
-
+    fun addClip(uri: Uri) { _clips.value = _clips.value + MonstroClip(uri) }
     fun setActiveIndex(i: Int) { _activeIndex.value = i }
 
+    // RENDERIZAÇÃO USANDO CAMINHOS ABSOLUTOS PARA EVITAR "UNRESOLVED REFERENCE"
     fun renderVideo(context: Context, onComplete: (File) -> Unit, onError: (String) -> Unit) {
         if (_clips.value.isEmpty()) return
         _isExporting.value = true
@@ -95,60 +83,70 @@ class EditorViewModel : ViewModel() {
 
         val outputDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES), "Monstro")
         if (!outputDir.exists()) outputDir.mkdirs()
-        val outputFile = File(outputDir, "MONSTRO_${System.currentTimeMillis()}.mp4")
+        val outputFile = File(outputDir, "MONSTRO_V19_${System.currentTimeMillis()}.mp4")
 
-        // Builder do Transformer
-        val transformer = Transformer.Builder(context)
+        // 1. Criar o Transformer especificando o pacote completo
+        val transformer = androidx.media3.transformer.Transformer.Builder(context)
             .setVideoMimeType(MimeTypes.VIDEO_H264)
             .setAudioMimeType(MimeTypes.AUDIO_AAC)
-            .addListener(object : Transformer.Listener {
-                override fun onCompleted(composition: Media3Composition, exportResult: ExportResult) {
+            .addListener(object : androidx.media3.transformer.Transformer.Listener {
+                override fun onCompleted(composition: androidx.media3.transformer.Composition, exportResult: androidx.media3.transformer.ExportResult) {
                     _isExporting.value = false
                     onComplete(outputFile)
                 }
-                override fun onError(composition: Media3Composition, exportResult: ExportResult, exportException: ExportException) {
+                override fun onError(
+                    composition: androidx.media3.transformer.Composition, 
+                    exportResult: androidx.media3.transformer.ExportResult, 
+                    exception: androidx.media3.transformer.ExportException
+                ) {
                     _isExporting.value = false
-                    onError(exportException.message ?: "Erro de Codec")
+                    onError(exception.message ?: "Erro de Codec/GPU")
                 }
             })
             .build()
 
-        // Mapeamento dos efeitos para a GPU
+        // 2. Construir clips usando FQN para Effects e ColorMatrix
         val editedItems = _clips.value.map { clip ->
-            val videoEffects = mutableListOf<Effect>()
-            val matrix = Media3ColorMatrix()
+            val videoEffects = mutableListOf<androidx.media3.common.Effect>()
+            
+            // Forçando a Matrix de Cor da Media3 de forma absoluta
+            val matrix = androidx.media3.common.ColorMatrix()
             matrix.setToSaturation(clip.saturation)
             
-            // createMatrix é um método estático do RgbFilter
-            videoEffects.add(RgbFilter.createMatrix(matrix.values))
+            // Filtro RGB absoluto
+            videoEffects.add(androidx.media3.effect.RgbFilter.createMatrix(matrix.values))
 
-            EditedMediaItem.Builder(MediaItem.fromUri(clip.uri))
-                .setEffects(Effects(emptyList<Effect>(), videoEffects))
+            androidx.media3.transformer.EditedMediaItem.Builder(MediaItem.fromUri(clip.uri))
+                .setEffects(
+                    androidx.media3.common.Effects(
+                        emptyList<androidx.media3.common.Effect>(),
+                        videoEffects
+                    )
+                )
                 .build()
         }
 
-        // Composição final usando Media3Composition para evitar erro de ambiguidade
-        val composition = Media3Composition.Builder(listOf(EditedMediaSequence(editedItems)))
-            .build()
+        // 3. Sequência e Composição absoluta
+        val sequence = androidx.media3.transformer.EditedMediaSequence(editedItems)
+        val composition = androidx.media3.transformer.Composition.Builder(listOf(sequence)).build()
 
         try {
             transformer.start(composition, outputFile.path)
+            
+            // 4. Monitoramento em tempo real
+            CoroutineScope(Dispatchers.Main).launch {
+                val progressHolder = androidx.media3.transformer.ProgressHolder()
+                while (_isExporting.value) {
+                    val state = transformer.getProgress(progressHolder)
+                    if (state != androidx.media3.transformer.Transformer.PROGRESS_STATE_NOT_STARTED) {
+                        _exportProgress.value = progressHolder.progress.toFloat() / 100f
+                    }
+                    delay(250)
+                }
+            }
         } catch (e: Exception) {
             _isExporting.value = false
-            onError(e.message ?: "Erro ao iniciar")
-            return
-        }
-
-        // Monitor de Progresso
-        CoroutineScope(Dispatchers.Main).launch {
-            val progressHolder = ProgressHolder()
-            while (_isExporting.value) {
-                val state = transformer.getProgress(progressHolder)
-                if (state != Transformer.PROGRESS_STATE_NOT_STARTED) {
-                    _exportProgress.value = progressHolder.progress.toFloat() / 100f
-                }
-                delay(200)
-            }
+            onError(e.message ?: "Falha ao disparar o motor")
         }
     }
 }
@@ -173,17 +171,13 @@ fun RealRenderEditor(viewModel: EditorViewModel = viewModel()) {
     val isExporting by viewModel.isExporting.collectAsState()
 
     val exoPlayer = remember(context) { ExoPlayer.Builder(context).build() }
-    
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        uri?.let { viewModel.addClip(it) }
-    }
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { it?.let { viewModel.addClip(it) } }
 
+    @Suppress("DEPRECATION")
     val perm = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) 
         Manifest.permission.READ_MEDIA_VIDEO else Manifest.permission.READ_EXTERNAL_STORAGE
     
-    val permLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { 
-        if(it) launcher.launch("video/*") 
-    }
+    val permLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { if(it) launcher.launch("video/*") }
 
     LaunchedEffect(clips) {
         exoPlayer.clearMediaItems()
@@ -193,82 +187,70 @@ fun RealRenderEditor(viewModel: EditorViewModel = viewModel()) {
 
     Scaffold(
         containerColor = MonstroTheme.Bg,
-        bottomBar = { BottomControls() }
+        bottomBar = {
+            Surface(Modifier.fillMaxWidth().height(60.dp), color = Color.Black) {
+                Row(Modifier.fillMaxSize(), Arrangement.SpaceEvenly, Alignment.CenterVertically) {
+                    IconButton(onClick = {}) { Icon(Icons.Default.Tune, null, tint = Color.White) }
+                    IconButton(onClick = {}) { Icon(Icons.Default.Speed, null, tint = Color.White) }
+                    IconButton(onClick = {}) { Icon(Icons.Default.AutoAwesome, null, tint = Color.White) }
+                }
+            }
+        }
     ) { pad ->
         Column(Modifier.padding(pad).fillMaxSize()) {
-            
+            // PLAYER
             Box(Modifier.fillMaxWidth().weight(1f).background(Color.Black)) {
                 if (clips.isEmpty()) {
                     Box(Modifier.fillMaxSize().clickable { permLauncher.launch(perm) }, Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(Icons.Default.VideoCall, null, tint = Color.Gray, modifier = Modifier.size(64.dp))
-                            Text("IMPORTAR MEDIA", color = Color.White, fontWeight = FontWeight.Black)
-                        }
+                        Text("V19 FINAL - IMPORTAR", color = Color.White, fontWeight = FontWeight.Bold)
                     }
                 } else {
-                    AndroidView(
-                        factory = { PlayerView(it).apply { player = exoPlayer; useController = false } },
-                        modifier = Modifier.fillMaxSize()
-                    )
+                    AndroidView(factory = { PlayerView(it).apply { player = exoPlayer; useController = false } }, modifier = Modifier.fillMaxSize())
                 }
 
                 if (isExporting) {
                     Box(Modifier.fillMaxSize().background(Color.Black.copy(0.9f)), Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator(progress = exportProgress, color = MonstroTheme.Pink, strokeWidth = 8.dp)
+                            CircularProgressIndicator(progress = exportProgress, color = MonstroTheme.Pink, strokeWidth = 6.dp)
                             Spacer(Modifier.height(16.dp))
-                            Text("RENDERIZANDO MP4...", color = Color.White, fontWeight = FontWeight.Bold)
-                            Text("${(exportProgress * 100).toInt()}%", color = MonstroTheme.Pink, fontSize = 32.sp, fontWeight = FontWeight.Black)
+                            Text("A CRIAR MP4... ${(exportProgress * 100).toInt()}%", color = Color.White, fontWeight = FontWeight.Black)
                         }
                     }
                 }
             }
 
-            LazyRow(
-                Modifier.fillMaxWidth().height(110.dp).background(MonstroTheme.Surface),
-                verticalAlignment = Alignment.CenterVertically,
-                contentPadding = PaddingValues(horizontal = 16.dp)
-            ) {
+            // TIMELINE
+            LazyRow(Modifier.fillMaxWidth().height(100.dp).background(MonstroTheme.Surface), verticalAlignment = Alignment.CenterVertically) {
                 itemsIndexed(clips) { i, _ ->
                     Box(
-                        Modifier.width(110.dp).height(70.dp).padding(4.dp)
+                        Modifier.width(110.dp).height(65.dp).padding(4.dp)
                             .clip(RoundedCornerShape(8.dp))
                             .background(if(i == activeIndex) MonstroTheme.Accent else Color.DarkGray)
                             .clickable { viewModel.setActiveIndex(i); exoPlayer.seekTo(i, 0L) },
                         Alignment.Center
                     ) {
-                        Text("CLIP ${i+1}", color = Color.White, fontWeight = FontWeight.Bold)
+                        Text("CLIP $i", color = Color.White, fontSize = 12.sp)
                     }
                 }
             }
 
+            // BOTÃO DE EXPORTAR
             Button(
                 onClick = {
                     viewModel.renderVideo(context, 
-                        onComplete = { Toast.makeText(context, "Salvo: ${it.name}", Toast.LENGTH_LONG).show() },
+                        onComplete = { Toast.makeText(context, "Exportado: Movies/Monstro", Toast.LENGTH_LONG).show() },
                         onError = { Toast.makeText(context, "Erro: $it", Toast.LENGTH_SHORT).show() }
                     )
                 },
-                modifier = Modifier.fillMaxWidth().height(80.dp).padding(16.dp),
+                modifier = Modifier.fillMaxWidth().height(75.dp).padding(12.dp),
                 enabled = clips.isNotEmpty() && !isExporting,
-                shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MonstroTheme.Pink)
             ) {
-                Icon(Icons.Default.Download, null)
+                Icon(Icons.Default.MovieFilter, null)
                 Spacer(Modifier.width(8.dp))
-                Text("EXPORTAR V19 MONSTRO", fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
+                Text("EXPORTAR MP4 REAL", fontWeight = FontWeight.Black)
             }
         }
     }
 }
 
-@Composable
-fun BottomControls() {
-    Surface(Modifier.fillMaxWidth().height(60.dp), color = Color.Black) {
-        Row(Modifier.fillMaxSize(), Arrangement.SpaceEvenly, Alignment.CenterVertically) {
-            IconButton(onClick = {}) { Icon(Icons.Default.AutoAwesome, null, tint = Color.White) }
-            IconButton(onClick = {}) { Icon(Icons.Default.SlowMotionVideo, null, tint = Color.White) }
-            IconButton(onClick = {}) { Icon(Icons.Default.Palette, null, tint = Color.White) }
-        }
-    }
-}
